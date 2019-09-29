@@ -10,7 +10,6 @@ $_['text_action']      = 'Select action';
 // Tab
 $_['tab_export']       = 'Export';
 $_['tab_import']       = 'Import';
-$_['tab_settings']     = 'Settings';
 
 // Entry
 $_['entry_URL']        = 'XML/YML source URL';
