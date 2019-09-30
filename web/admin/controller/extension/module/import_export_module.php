@@ -33,8 +33,7 @@ public function index() {
             $deliveryOptions = $dom->getElementsByTagName('delivery-options');
             $offers = $dom->getElementsByTagName('offer');
             $data['xml'] = $dom->saveXML();
-            $dbh = new PDO('mysql:dbname=opencart;host=127.0.0.1', 'mysql', 'mysql');
-            $dbh->exec('SET NAMES utf8');
+            $this->load->model('extension/module/import_export_module');
             foreach($currencies as $currency) {
                 $sth = $dbh->prepare('UPDATE `oc_currency` SET `value`=?, `date_modified`=? WHERE `code`=?');
                 $sth->bindParam(1, $currency->getAttribute('rate'), PDO::PARAM_STR, 10);

@@ -2,3 +2,5 @@
 /storage
 /nbproject
 /web/.htaccess.txt
+/admin/config.php
+/web/config.php
