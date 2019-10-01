@@ -14,17 +14,12 @@ public function index() {
 
     $this->document->setTitle($this->language->get('heading_title'));
 
-    //$this->load->model('setting/module');
-
     if (($this->request->server['REQUEST_METHOD'] == 'POST') && $this->validate()) {
         
         if (isset($this->request->post['url'])) {
-            /*$parser = xml_parser_create();
-            xml_parse_into_struct($parser, $xml, $values, $index);
-            xml_parser_free($parser);*/            
             $xml = file_get_contents($this->request->post['url']);
             $this->load->model('extension/module/import_export_module');
-            $model = $this->regisry->get('model_extension_module_import_export_module');
+            $model = $this->model_extension_module_import_export_module;
             $model->import($xml);
         }
 
