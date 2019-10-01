@@ -4,7 +4,7 @@ $_['heading_title']    = 'Import/Export for XML/YML format';
  
 // Text
 $_['text_extension']   = 'Extensions';
-$_['text_success']     = 'Success: You have modified featured plus module!';
+$_['text_success']     = 'Requestd operation successfully complete!';
 $_['text_action']      = 'Select action';
 
 // Tab

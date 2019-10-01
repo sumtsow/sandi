@@ -58,66 +58,75 @@ class ModelExtensionModuleImportExportModule extends Model {
         $sth4->execute();
         $sth5->execute();
         
-        $categories = $this->dom->getElementsByTagName('category');
+        $this->categories = $this->dom->getElementsByTagName('category');
+        $this->categoriesArray = $this->categoriesToArray(); 
+        $categoryHierarchy = $this->getCategoryHierarchy();
+        var_dump($categoryHierarchy['categoryLevels']);
+        var_dump($categoryHierarchy['hierarchy']);
         $date_modified = $this->date_modified;
+        $this->load->model('localisation/language');
+        $list_lang = $this->model_localisation_language->getLanguages();        
+        
+        foreach($this->categories as $category) {
             
-        foreach($categories as $category) {
-            
-            $id = $category->getAttribute('id');
-            $parentId = ($category->getAttribute('parentId')) ? $category->getAttribute('parentId') : 0;
+            $id = intval($category->getAttribute('id'));
+            $parentId = ($category->getAttribute('parentId')) ? intval($category->getAttribute('parentId')) : 0;
             $description = $category->getAttribute('description');
             $categoryName = $category->nodeValue;
             $top = ($parentId) ? 0 : 1;
-
+            
             try {  
                 $this->dbh->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
                 $this->dbh->beginTransaction();
                 
-                    $sth1 = $this->dbh->prepare('INSERT INTO `oc_category`(`category_id`, `parent_id`, `top`,  `column`, `status`, `date_added`, `date_modified`) VALUES (?, ?, ?, 0, 1, ?, ?)');
-                    $sth1->bindParam(1, $id, PDO::PARAM_INT);
-                    $sth1->bindParam(2, $parentId, PDO::PARAM_INT);
-                    $sth1->bindParam(3, $top, PDO::PARAM_BOOL);
-                    $sth1->bindParam(4, $date_modified, PDO::PARAM_STR, 16);
-                    $sth1->bindParam(5, $date_modified, PDO::PARAM_STR, 16);
+                    $sth1 = $this->dbh->prepare('INSERT INTO `oc_category`(`category_id`, `image`, `parent_id`, `top`,  `column`, `sort_order`, `status`, `date_added`, `date_modified`) VALUES (:id, NULL, :parentId, :top, 0, 0, 1, :date_added, :date_modified)');
+                    $sth1->bindParam(':id', $id, PDO::PARAM_INT);
+                    $sth1->bindParam(':parentId', $parentId, PDO::PARAM_INT);
+                    $sth1->bindParam(':top', $top, PDO::PARAM_INT, 1);
+                    $sth1->bindParam(':date_added', $date_modified, PDO::PARAM_STR, 16);
+                    $sth1->bindParam(':date_modified', $date_modified, PDO::PARAM_STR, 16);
                     $sth1->execute();
 
-                    $sth2 = $this->dbh->prepare('INSERT INTO `oc_category_description` (`category_id`, `language_id`, `name`, `description`, `meta_title`, `meta_description`, `meta_keyword`) VALUES (?, 1, ?, ?, ?, ?, "")');
-                    $sth2->bindParam(1, $id, PDO::PARAM_INT);
-                    $sth2->bindParam(2, $categoryName, PDO::PARAM_STR, 255);
-                    $sth2->bindParam(3, $description, PDO::PARAM_STR);
-                    $sth2->bindParam(4, $categoryName, PDO::PARAM_STR, 255);
-                    $sth2->bindParam(5, $description, PDO::PARAM_STR);
+                    $sth2 = $this->dbh->prepare('INSERT INTO `oc_category_description` (`category_id`, `language_id`, `name`, `description`, `meta_title`, `meta_description`, `meta_keyword`) VALUES (:id, :language_id, :name, :description, :meta_title, :meta_description, "")');
+                    $sth2->bindParam(':id', $id, PDO::PARAM_INT);
+                    $sth2->bindParam(':language_id', $list_lang['en-gb']['language_id'], PDO::PARAM_INT);
+                    $sth2->bindParam(':name', $categoryName, PDO::PARAM_STR, 255);
+                    $sth2->bindParam(':description', $description, PDO::PARAM_STR);
+                    $sth2->bindParam(':meta_title', $categoryName, PDO::PARAM_STR, 255);
+                    $sth2->bindParam(':meta_description', $description, PDO::PARAM_STR);
                     $sth2->execute();
                     
-                    $sth3 = $this->dbh->prepare('INSERT INTO `oc_category_description` (`category_id`, `language_id`, `name`, `description`, `meta_title`, `meta_description`, `meta_keyword`) VALUES (?, 2, ?, ?, ?, ?, "")');
-                    $sth3->bindParam(1, $id, PDO::PARAM_INT);
-                    $sth3->bindParam(2, $categoryName, PDO::PARAM_STR, 255);
-                    $sth3->bindParam(3, $description, PDO::PARAM_STR);
-                    $sth3->bindParam(4, $categoryName, PDO::PARAM_STR, 255);
-                    $sth3->bindParam(5, $description, PDO::PARAM_STR);
+                    $sth3 = $this->dbh->prepare('INSERT INTO `oc_category_description` (`category_id`, `language_id`, `name`, `description`, `meta_title`, `meta_description`, `meta_keyword`) VALUES (:id, :language_id, :name, :description, :meta_title, :meta_description, "")');
+                    $sth3->bindParam(':id', $id, PDO::PARAM_INT);
+                    $sth3->bindParam(':language_id', $list_lang['ru-ru']['language_id'], PDO::PARAM_INT);
+                    $sth3->bindParam(':name', $categoryName, PDO::PARAM_STR, 255);
+                    $sth3->bindParam(':description', $description, PDO::PARAM_STR);
+                    $sth3->bindParam(':meta_title', $categoryName, PDO::PARAM_STR, 255);
+                    $sth3->bindParam(':meta_description', $description, PDO::PARAM_STR);
                     $sth3->execute();
                     
-                    $sth4 = $this->dbh->prepare('INSERT INTO `oc_category_path` (`category_id`, `path_id`, `level`) VALUES (?,  ?, ?)');
-                    $sth4->bindParam(1, $id, PDO::PARAM_INT);
-                    $sth4->bindParam(2, $id, PDO::PARAM_INT);
-                    $sth4->bindParam(3, $top, PDO::PARAM_BOOL);
+                    $sth4 = $this->dbh->prepare('INSERT INTO `oc_category_path` (`category_id`, `path_id`, `level`) VALUES (:id,  :path_id, :level)');
+                    $sth4->bindParam(':id', $id, PDO::PARAM_INT);
+                    $sth4->bindParam(':path_id', $id, PDO::PARAM_INT);
+                    $sth4->bindParam(':level', $top, PDO::PARAM_INT, 1);
                     $sth4->execute();
                     
-                    $sth5 = $this->dbh->prepare('INSERT INTO `oc_category_to_layout` (`category_id`, `store_id`, `layout_id`) VALUES (?, 0, 0)');
-                    $sth5->bindParam(1, $id, PDO::PARAM_INT);
+                    $sth5 = $this->dbh->prepare('INSERT INTO `oc_category_to_layout` (`category_id`, `store_id`, `layout_id`) VALUES (:id, 0, 0)');
+                    $sth5->bindParam(':id', $id, PDO::PARAM_INT);
                     $sth5->execute();
                     
-                    $sth6 = $this->dbh->prepare('INSERT INTO `oc_category_to_store` (`category_id`, `store_id`, `layout_id`) VALUES (?, 0)');
-                    $sth6->bindParam(1, $id, PDO::PARAM_INT);
+                    $sth6 = $this->dbh->prepare('INSERT INTO `oc_category_to_store` (`category_id`, `store_id`) VALUES (:id, 0)');
+                    $sth6->bindParam(':id', $id, PDO::PARAM_INT);
                     $sth6->execute();
 
                 $this->dbh->commit();
-
             }
+            
             catch (Exception $e) {
-                $this->dbh->rollBack();
-                echo "Ошибка: " . $e->getMessage();
+                $this->dbh->rollBack();                
+                echo "Ошибка: " . $e->getMessage() .'<br />';
             }
+            
 	}
         return true;
     }
@@ -136,10 +145,52 @@ class ModelExtensionModuleImportExportModule extends Model {
         }*/
         
     private function dbConnect() {
-        $dbh = new PDO('mysql:dbname=opencart;host=127.0.0.1', 'mysql', 'mysql');
+        $dbh = new PDO('mysql:dbname=' . DB_DATABASE . ';host='. DB_HOSTNAME, DB_USERNAME, DB_PASSWORD);
         $dbh->exec('SET NAMES utf8');
         return $dbh;
     }
+    
+    private function categoriesToArray() {
+        $categoriesArray = [];
+        foreach($this->categories as $category) {
+            $id = intval($category->getAttribute('id'));
+            $parentId = ($category->getAttribute('parentId')) ? intval($category->getAttribute('parentId')) : 0;
+            $categoriesArray[$id] = $parentId;
+        }
+        return $categoriesArray;
+    }
+    
+    private function getChildren($categoryId = 0) {
+        return array_keys($this->categoriesArray, $categoryId);
+    }
+    
+    private function hasChildren($categoryId = 0) {
+        return in_array($categoryId, $this->categoriesArray);
+    }
+    
+    private function getCategoryHierarchy($categoryId = 0, $currentLevel = -1, $categoryLevels = []) {
+        $categories = $this->getChildren($categoryId);
+        $currentLevel++;
+        $categoryLevels[$categoryId] = $currentLevel;
+        foreach($categories as $category) {
+            if(self::hasChildren($category)) {
+                $children = self::getCategoryHierarchy($category, $currentLevel, $categoryLevels);
+            }
+            else {
+                $children = [
+                    'hierarchy' => $currentLevel,
+                    'categoryLevels' => [$category => $currentLevel]
+                ];
+            }
+            $key = key($children['categoryLevels']);
+            $categoryLevels[$key] = $children['categoryLevels'][$key];
+            $categoryHierarchy[$category] = $children['hierarchy'];
+        }
+        return [
+            'hierarchy' => $categoryHierarchy,
+            'categoryLevels' => $categoryLevels
+        ];
+    }    
 }
 
 

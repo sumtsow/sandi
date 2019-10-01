@@ -43,7 +43,7 @@
                         <div class="form-group">
                             <label class="col-sm-2 control-label" for="input-url">{{ entry_URL }}</label>
                             <div class="col-sm-9">
-                                <input type="url" name="url" value="https://b2b-sandi.com.ua/export_xml/33b12f231c25a280385fe1db9e5f30c5" placeholder="{{ entry_URL }}" id="input-url" class="form-control" />
+                                <input type="url" name="url" value="http://localhost" placeholder="{{ entry_URL }}" id="input-url" class="form-control" />
                                 {% if error_url %}
                                 <div class="text-danger">{{ error_url }}</div>
                                 {% endif %}
@@ -52,21 +52,6 @@
                                 <button type="submit" class="btn btn-primary">Ok</button>
                             </div>
                         </div>
-                    </form>
-                            
-                    <form action="{{ action }}" method="post" enctype="multipart/form-data" id="form-xml">
-                        <div class="form-group">
-                            <label class="control-label" for="input-xml">{{ entry_XML }}</label>
-                            <textarea name="xml" id="input-xml" class="form-control" rows="6" />{{ xml }}</textarea>
-                            {% if error_url %}
-                            <div class="text-danger">{{ error_xml }}</div>
-                            {% endif %}
-                        </div>
-                        <div class="row">
-                            <div class="col-sm-12 text-right mt-3 mr-3">
-                                <button type="submit" class="btn btn-primary">{{ tab_import }}</button>
-                            </div>
-                        </div>                                
                     </form>
                             
                 </div>

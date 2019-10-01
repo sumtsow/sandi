@@ -6,10 +6,10 @@ define('HTTP_SERVER', 'http://sandi/');
 define('HTTPS_SERVER', 'http://sandi/');
 
 // DIR
-define('DIR_APPLICATION', 'C:/Users/sumtsow/sandi/web/catalog/');
-define('DIR_SYSTEM', 'C:/Users/sumtsow/sandi/web/system/');
-define('DIR_IMAGE', 'C:/Users/sumtsow/sandi/web/image/');
-define('DIR_STORAGE', 'C:/Users/sumtsow/sandi/storage/');
+define('DIR_APPLICATION', '/home/sumtsow/sandi/web/catalog/');
+define('DIR_SYSTEM', '/home/sumtsow/sandi/web/system/');
+define('DIR_IMAGE', '/home/sumtsow/sandi/web/image/');
+define('DIR_STORAGE', '/home/sumtsow/sandi/storage/');
 define('DIR_LANGUAGE', DIR_APPLICATION . 'language/');
 define('DIR_TEMPLATE', DIR_APPLICATION . 'view/theme/');
 define('DIR_CONFIG', DIR_SYSTEM . 'config/');

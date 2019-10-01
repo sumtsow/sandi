@@ -8,11 +8,11 @@ define('HTTPS_SERVER', 'http://sandi/admin/');
 define('HTTPS_CATALOG', 'http://sandi/');
 
 // DIR
-define('DIR_APPLICATION', 'C:/Users/sumtsow/sandi/web/admin/');
-define('DIR_SYSTEM', 'C:/Users/sumtsow/sandi/web/system/');
-define('DIR_IMAGE', 'C:/Users/sumtsow/sandi/web/image/');
-define('DIR_STORAGE', 'C:/Users/sumtsow/sandi/storage/');
-define('DIR_CATALOG', 'C:/Users/sumtsow/sandi/web/catalog/');
+define('DIR_APPLICATION', '/home/sumtsow/sandi/web/admin/');
+define('DIR_SYSTEM', '/home/sumtsow/sandi/web/system/');
+define('DIR_IMAGE', '/home/sumtsow/sandi/web/image/');
+define('DIR_STORAGE', '/home/sumtsow/sandi/storage/');
+define('DIR_CATALOG', '/home/sumtsow/sandi/web/catalog/');
 define('DIR_LANGUAGE', DIR_APPLICATION . 'language/');
 define('DIR_TEMPLATE', DIR_APPLICATION . 'view/template/');
 define('DIR_CONFIG', DIR_SYSTEM . 'config/');
