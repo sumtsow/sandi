@@ -61,8 +61,9 @@ class ModelExtensionModuleImportExportModule extends Model {
         $this->categories = $this->dom->getElementsByTagName('category');
         $this->categoriesArray = $this->categoriesToArray(); 
         $categoryHierarchy = $this->getCategoryHierarchy();
-        var_dump($categoryHierarchy['categoryLevels']);
-        var_dump($categoryHierarchy['hierarchy']);
+        $categoryLevels = $this->parseJSON($categoryHierarchy['levelstring']);
+        //var_dump ($this->parseJSON($categoryHierarchy['levelstring']));
+        //var_dump($categoryHierarchy['hierarchy']);
         $date_modified = $this->date_modified;
         $this->load->model('localisation/language');
         $list_lang = $this->model_localisation_language->getLanguages();        
@@ -108,7 +109,8 @@ class ModelExtensionModuleImportExportModule extends Model {
                     $sth4 = $this->dbh->prepare('INSERT INTO `oc_category_path` (`category_id`, `path_id`, `level`) VALUES (:id,  :path_id, :level)');
                     $sth4->bindParam(':id', $id, PDO::PARAM_INT);
                     $sth4->bindParam(':path_id', $id, PDO::PARAM_INT);
-                    $sth4->bindParam(':level', $top, PDO::PARAM_INT, 1);
+                    $level = $categoryLevels->$id;
+                    $sth4->bindParam(':level', $level, PDO::PARAM_INT, 1);
                     $sth4->execute();
                     
                     $sth5 = $this->dbh->prepare('INSERT INTO `oc_category_to_layout` (`category_id`, `store_id`, `layout_id`) VALUES (:id, 0, 0)');
@@ -168,29 +170,33 @@ class ModelExtensionModuleImportExportModule extends Model {
         return in_array($categoryId, $this->categoriesArray);
     }
     
-    private function getCategoryHierarchy($categoryId = 0, $currentLevel = -1, $categoryLevels = []) {
+    private function getCategoryHierarchy($categoryId = 0, $currentLevel = -1, $levelstring = '') {
         $categories = $this->getChildren($categoryId);
         $currentLevel++;
-        $categoryLevels[$categoryId] = $currentLevel;
         foreach($categories as $category) {
+            $levelstring .= '"'.$category.'": '.$currentLevel.', ';
             if(self::hasChildren($category)) {
-                $children = self::getCategoryHierarchy($category, $currentLevel, $categoryLevels);
+                $children = self::getCategoryHierarchy($category, $currentLevel, $levelstring);
             }
             else {
                 $children = [
                     'hierarchy' => $currentLevel,
-                    'categoryLevels' => [$category => $currentLevel]
+                    'levelstring' => $levelstring,
                 ];
             }
-            $key = key($children['categoryLevels']);
-            $categoryLevels[$key] = $children['categoryLevels'][$key];
             $categoryHierarchy[$category] = $children['hierarchy'];
+            $levelstring = $children['levelstring'];
         }
         return [
             'hierarchy' => $categoryHierarchy,
-            'categoryLevels' => $categoryLevels
+            'levelstring' => $levelstring,
         ];
-    }    
+    }
+    
+    private function parseJSON($mystring) {
+        return json_decode('{' . rtrim($mystring, ', ') . '}');
+    }
+    
 }
 
 
