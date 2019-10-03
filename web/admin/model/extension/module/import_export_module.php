@@ -22,10 +22,12 @@ class ModelExtensionModuleImportExportModule extends Model {
         $this->date_modified = $this->rootNode->getAttribute('date');
         $this->dbh = $this->dbConnect();
         $this->load->model('localisation/language');
+        $this->load->model('catalog/product');
         
         $this->importCurrencies();
         $this->importCategories();
         $this->importDeliveryOptions();
+        $this->manufacturers = $this->importManufacturers();
         $this->importProducts();
         
         
@@ -151,6 +153,20 @@ class ModelExtensionModuleImportExportModule extends Model {
         }
     }
     
+        
+    private function importManufacturers() {
+        $products = $this->dom->getElementsByTagName('offer');
+        foreach($products as $product) {
+            $manufacturers[] = [
+                'vendor' => $product->getElementsByTagName('vendor')->item(0)->nodeValue,
+                'vendorCode' => $product->getElementsByTagName('vendorCode')->item(0)->nodeValue
+            ];
+        }
+        $manufacturers = array_unique($manufacturers);        
+        sort($manufacturers);
+        return $manufacturers;
+    }
+    
     
     private function importProducts() {
         
@@ -181,33 +197,45 @@ class ModelExtensionModuleImportExportModule extends Model {
         
         $offers = $this->dom->getElementsByTagName('offer');
         
+        
+        
         foreach($offers as $product) {
             
             $listLang = $this->model_localisation_language->getLanguages();
             sort($listLang);
-            $id = $product->getAttribute('id');
-            $available = $product->getAttribute('available');
-            $quantity = $product->getAttribute('instock');
-            $price = $product->getElementsByTagName('price')->item(0)->nodeValue;
-            $currencyId = $product->getElementsByTagName('currencyId')->item(0)->nodeValue;
+            
+            $data['model'] = $product->getElementsByTagName('model')->item(0)->nodeValue;
+            $data['quantity'] = $product->getAttribute('instock');
+            $data['stock_status_id'] = 6;
+            $data['date_available'] = date_format(date_create($this->date_modified), 'Y-m-d');
+            $data['manufacturer_id'] = $product->getElementsByTagName('vendorCode')->item(0)->nodeValue;            
+            $data['price'] = $product->getElementsByTagName('price')->item(0)->nodeValue;
+
+
+
+            
+            $data['id'] = $product->getAttribute('id');
+            $data['available'] = $product->getAttribute('available');
+            $data['date_modified'] = $this->date_modified;
+
+            $data['currencyId'] = $product->getElementsByTagName('currencyId')->item(0)->nodeValue;
             $pictures = $product->getElementsByTagName('picture');
-            $delivery = $product->getElementsByTagName('delivery')->item(0)->nodeValue;
-            $name = $product->getElementsByTagName('name')->item(0)->nodeValue;
-            $vendor = $product->getElementsByTagName('vendor')->item(0)->nodeValue;
-            $manufacturer_id = $product->getElementsByTagName('vendorCode')->item(0)->nodeValue;
-            $model = $product->getElementsByTagName('model')->item(0)->nodeValue;
-            $description = $product->getElementsByTagName('description')->item(0)->nodeValue;
+            $data['delivery'] = $product->getElementsByTagName('delivery')->item(0)->nodeValue;
+            $data['name'] = $product->getElementsByTagName('name')->item(0)->nodeValue;
+            $data['vendor'] = $product->getElementsByTagName('vendor')->item(0)->nodeValue;
+            $data['description'] = $product->getElementsByTagName('description')->item(0)->nodeValue;
             $params = $product->getElementsByTagName('param');
-            $date_modified = $this->date_modified;
-            $dateTime = date_create($date_modified);
-            $date_available = date_format($dateTime, 'Y-m-d');            
+           
             /**
              * ??????????????????
              */
             $tax_class_id = 9;
             
+            
+            $this->model_catalog_product->addProduct($data);
+            
 
-            try {  
+            /*try {  
                 $this->dbh->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
                 $this->dbh->beginTransaction();
 
@@ -257,7 +285,8 @@ class ModelExtensionModuleImportExportModule extends Model {
                 $sth->bindParam(':id', $id, PDO::PARAM_STR, 11);
                 //$sth->execute();
                 
-                /*
+                
+                
 
                 INSERT INTO `oc_product_attribute` (`product_id`, `attribute_id`, `language_id`, `text`) VALUES (43, 2, 1, '1'),
 
@@ -275,7 +304,7 @@ class ModelExtensionModuleImportExportModule extends Model {
                 INSERT INTO `oc_product_reward` (`product_reward_id`, `product_id`, `customer_group_id`, `points`) VALUES (515, 42, 1, 100);
 
                 INSERT INTO `oc_product_special` (`product_special_id`, `product_id`, `customer_group_id`, `priority`, `price`, `date_start`, `date_end`) VALUES (438, 30, 1, 1, '80.0000', '0000-00-00', '0000-00-00');
-                 */
+                 
                 
                 $this->dbh->commit();
             }
@@ -283,8 +312,8 @@ class ModelExtensionModuleImportExportModule extends Model {
             catch (Exception $e) {
                 $this->dbh->rollBack();                
                 echo "Ошибка: " . $e->getMessage() .'<br />';
-            }
-        }
+            }*/
+        } 
     }
         
     private function dbConnect() {
