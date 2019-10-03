@@ -23,6 +23,7 @@ class ModelExtensionModuleImportExportModule extends Model {
         $this->dbh = $this->dbConnect();
         $this->load->model('localisation/language');
         $this->load->model('catalog/product');
+        $this->load->model('catalog/manufacturer');
         
         $this->importCurrencies();
         $this->importCategories();
@@ -42,7 +43,7 @@ class ModelExtensionModuleImportExportModule extends Model {
         foreach($currencies as $currency) {
             $rate = $currency->getAttribute('rate');
             $id = $currency->getAttribute('id');
-            $sth = $this->dbh->prepare('UPDATE `oc_currency` SET `value`=?, `date_modified`=? WHERE `code`=?');
+            $sth = $this->dbh->prepare('UPDATE `' . DB_PREFIX . 'currency` SET `value`=?, `date_modified`=? WHERE `code`=?');
             $sth->bindParam(1, $rate, PDO::PARAM_STR, 16);
             $sth->bindParam(2, $date_modified, PDO::PARAM_STR, 16);
             $sth->bindParam(3, $id, PDO::PARAM_STR, 3);
@@ -53,11 +54,11 @@ class ModelExtensionModuleImportExportModule extends Model {
     
     private function importCategories() {
         
-        $sth1 = $this->dbh->prepare('TRUNCATE TABLE `oc_category`');
-        $sth2 = $this->dbh->prepare('TRUNCATE TABLE `oc_category_description`');
-        $sth3 = $this->dbh->prepare('TRUNCATE TABLE `oc_category_path`');
-        $sth4 = $this->dbh->prepare('TRUNCATE TABLE `oc_category_to_layout`');
-        $sth5 = $this->dbh->prepare('TRUNCATE TABLE `oc_category_to_store`');
+        $sth1 = $this->dbh->prepare('TRUNCATE TABLE `' . DB_PREFIX . 'category`');
+        $sth2 = $this->dbh->prepare('TRUNCATE TABLE `' . DB_PREFIX . 'category_description`');
+        $sth3 = $this->dbh->prepare('TRUNCATE TABLE `' . DB_PREFIX . 'category_path`');
+        $sth4 = $this->dbh->prepare('TRUNCATE TABLE `' . DB_PREFIX . 'category_to_layout`');
+        $sth5 = $this->dbh->prepare('TRUNCATE TABLE `' . DB_PREFIX . 'category_to_store`');
         $sth1->execute();
         $sth2->execute();
         $sth3->execute();
@@ -84,7 +85,7 @@ class ModelExtensionModuleImportExportModule extends Model {
                 $this->dbh->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
                 $this->dbh->beginTransaction();
                 
-                    $sth = $this->dbh->prepare('INSERT INTO `oc_category`(`category_id`, `image`, `parent_id`, `top`,  `column`, `sort_order`, `status`, `date_added`, `date_modified`) VALUES (:id, NULL, :parentId, :top, 1, 0, 1, :date_modified, :date_modified)');
+                    $sth = $this->dbh->prepare('INSERT INTO `' . DB_PREFIX . 'category`(`category_id`, `image`, `parent_id`, `top`,  `column`, `sort_order`, `status`, `date_added`, `date_modified`) VALUES (:id, NULL, :parentId, :top, 1, 0, 1, :date_modified, :date_modified)');
                     $sth->bindParam(':id', $id, PDO::PARAM_INT, 11);
                     $sth->bindParam(':parentId', $parentId, PDO::PARAM_INT, 11);
                     $sth->bindParam(':top', $top, PDO::PARAM_INT, 1);
@@ -92,7 +93,7 @@ class ModelExtensionModuleImportExportModule extends Model {
                     $sth->execute();
 
                     foreach($listLang as $lang) {
-                        $sth = $this->dbh->prepare('INSERT INTO `oc_category_description` (`category_id`, `language_id`, `name`, `description`, `meta_title`, `meta_description`, `meta_keyword`) VALUES (:id, :language_id, :name, :description, :name, :description, "")');
+                        $sth = $this->dbh->prepare('INSERT INTO `' . DB_PREFIX . 'category_description` (`category_id`, `language_id`, `name`, `description`, `meta_title`, `meta_description`, `meta_keyword`) VALUES (:id, :language_id, :name, :description, :name, :description, "")');
                         $sth->bindParam(':id', $id, PDO::PARAM_INT);
                         $sth->bindParam(':language_id', $lang['language_id'], PDO::PARAM_INT, 11);
                         $sth->bindParam(':name', $categoryName, PDO::PARAM_STR, 255);
@@ -104,7 +105,7 @@ class ModelExtensionModuleImportExportModule extends Model {
                     $level = $categoryLevels->$id;
                     $path_id = $id;
                     for($i = $level; $i >= 0; $i--) {
-                        $sth = $this->dbh->prepare('INSERT INTO `oc_category_path` (`category_id`, `path_id`, `level`) VALUES (:id,  :path_id, :level)');
+                        $sth = $this->dbh->prepare('INSERT INTO `' . DB_PREFIX . 'category_path` (`category_id`, `path_id`, `level`) VALUES (:id,  :path_id, :level)');
                         $sth->bindParam(':id', $id, PDO::PARAM_INT, 11);
                         $sth->bindParam(':path_id', $path_id, PDO::PARAM_INT, 11);
                         $sth->bindParam(':level', $i, PDO::PARAM_INT, 11);
@@ -112,11 +113,11 @@ class ModelExtensionModuleImportExportModule extends Model {
                         $path_id = $this->categoriesArray[$path_id];
                     }
                     
-                    $sth = $this->dbh->prepare('INSERT INTO `oc_category_to_layout` (`category_id`, `store_id`, `layout_id`) VALUES (:id, 0, 0)');
+                    $sth = $this->dbh->prepare('INSERT INTO `' . DB_PREFIX . 'category_to_layout` (`category_id`, `store_id`, `layout_id`) VALUES (:id, 0, 0)');
                     $sth->bindParam(':id', $id, PDO::PARAM_INT, 11);
                     $sth->execute();
                     
-                    $sth = $this->dbh->prepare('INSERT INTO `oc_category_to_store` (`category_id`, `store_id`) VALUES (:id, 0)');
+                    $sth = $this->dbh->prepare('INSERT INTO `' . DB_PREFIX . 'category_to_store` (`category_id`, `store_id`) VALUES (:id, 0)');
                     $sth->bindParam(':id', $id, PDO::PARAM_INT, 11);
                     $sth->execute();
 
@@ -145,7 +146,7 @@ class ModelExtensionModuleImportExportModule extends Model {
             $days = $option->getElementsByTagName('option')->item(0)->getAttribute('days') .' Days';
             
             foreach($listLang as $lang) {
-                $sth = $this->dbh->prepare('UPDATE `oc_stock_status` SET `name`=:days WHERE `stock_status_id` = 6 AND `language_id`=:lang');
+                $sth = $this->dbh->prepare('UPDATE `' . DB_PREFIX . 'stock_status` SET `name`=:days WHERE `stock_status_id` = 6 AND `language_id`=:lang');
                 $sth->bindParam(':lang', $lang['language_id'], PDO::PARAM_INT, 11);
                 $sth->bindParam(':days', $days, PDO::PARAM_STR, 32);
                 $sth->execute(); 
@@ -155,34 +156,49 @@ class ModelExtensionModuleImportExportModule extends Model {
     
         
     private function importManufacturers() {
+        $sth1 = $this->dbh->prepare('TRUNCATE TABLE `' . DB_PREFIX . 'manufacturer`');
+        $sth2 = $this->dbh->prepare('TRUNCATE TABLE `' . DB_PREFIX . 'manufacturer_to_store`');
+        $sth1->execute();
+        $sth2->execute();
+        
         $products = $this->dom->getElementsByTagName('offer');
         foreach($products as $product) {
-            $manufacturers[] = [
-                'vendor' => $product->getElementsByTagName('vendor')->item(0)->nodeValue,
-                'vendorCode' => $product->getElementsByTagName('vendorCode')->item(0)->nodeValue
-            ];
+            $manufacturers[] = $product->getElementsByTagName('vendor')->item(0)->nodeValue;
         }
         $manufacturers = array_unique($manufacturers);        
         sort($manufacturers);
-        return $manufacturers;
+        foreach($manufacturers as $manufacturer) {
+            $data['name'] = $manufacturer;
+            $data['manufacturer_store'] = [0];
+            $data['sort_order'] = 0;
+            $this->model_catalog_manufacturer->addManufacturer($data);
+        }
+        unset($data['name'], $data['image'], $data['manufacturer_store']);
+        
+        return true;
     }
     
     
     private function importProducts() {
         
-        /*$st1  = $this->dbh->prepare('TRUNCATE TABLE `oc_product`');
-        $sth2  = $this->dbh->prepare('TRUNCATE TABLE `oc_product_attribute`');
-        $sth3  = $this->dbh->prepare('TRUNCATE TABLE `oc_product_description`');
-        $sth4  = $this->dbh->prepare('TRUNCATE TABLE `oc_product_discount`');
-        $sth5  = $this->dbh->prepare('TRUNCATE TABLE `oc_product_image`');
-        $sth6  = $this->dbh->prepare('TRUNCATE TABLE `oc_product_option`');
-        $sth7  = $this->dbh->prepare('TRUNCATE TABLE `oc_product_option_value`');
-        $sth8  = $this->dbh->prepare('TRUNCATE TABLE `oc_product_related`');
-        $sth9  = $this->dbh->prepare('TRUNCATE TABLE `oc_product_reward`');
-        $sth0 = $this->dbh->prepare('TRUNCATE TABLE `oc_product_special`');
-        $sth1 = $this->dbh->prepare('TRUNCATE TABLE `oc_product_to_category`');
-        $sth = $this->dbh->prepare('TRUNCATE TABLE `oc_product_to_store`');        
-        $sth1->execute();
+        $sth1   = $this->dbh->prepare('TRUNCATE TABLE `' . DB_PREFIX . 'product`');
+        $sth2   = $this->dbh->prepare('TRUNCATE TABLE `' . DB_PREFIX . 'product_attribute`');
+        $sth3   = $this->dbh->prepare('TRUNCATE TABLE `' . DB_PREFIX . 'product_description`');
+        $sth4   = $this->dbh->prepare('TRUNCATE TABLE `' . DB_PREFIX . 'product_discount`');
+        $sth5   = $this->dbh->prepare('TRUNCATE TABLE `' . DB_PREFIX . 'product_filter`');
+        $sth6   = $this->dbh->prepare('TRUNCATE TABLE `' . DB_PREFIX . 'product_image`');
+        $sth7   = $this->dbh->prepare('TRUNCATE TABLE `' . DB_PREFIX . 'product_option`');
+        $sth8   = $this->dbh->prepare('TRUNCATE TABLE `' . DB_PREFIX . 'product_option_value`');
+        $sth9   = $this->dbh->prepare('TRUNCATE TABLE `' . DB_PREFIX . 'product_related`');
+        $sth10 = $this->dbh->prepare('TRUNCATE TABLE `' . DB_PREFIX . 'product_reward`');
+        $sth11 = $this->dbh->prepare('TRUNCATE TABLE `' . DB_PREFIX . 'product_special`');
+        $sth12 = $this->dbh->prepare('TRUNCATE TABLE `' . DB_PREFIX . 'product_to_category`');
+        $sth13 = $this->dbh->prepare('TRUNCATE TABLE `' . DB_PREFIX . 'product_to_layout`');
+        $sth14 = $this->dbh->prepare('TRUNCATE TABLE `' . DB_PREFIX . 'product_to_store`');
+        $sth15 = $this->dbh->prepare('TRUNCATE TABLE `' . DB_PREFIX . 'product_recurring`');
+        $sth16 = $this->dbh->prepare('TRUNCATE TABLE `' . DB_PREFIX . 'review`');
+        $sth17 = $this->dbh->prepare('TRUNCATE TABLE `' . DB_PREFIX . 'coupon_product`');
+        
         $sth2->execute();
         $sth3->execute();
         $sth4->execute();
@@ -191,128 +207,118 @@ class ModelExtensionModuleImportExportModule extends Model {
         $sth7->execute();
         $sth8->execute();
         $sth9->execute();
-        $sth0->execute();
+        $sth10->execute();
+        $sth11->execute();
+        $sth12->execute();
+        $sth13->execute();
+        $sth14->execute();
+        $sth15->execute();
+        $sth16->execute();
+        $sth17->execute();
         $sth1->execute();
-        $sth->execute(); */       
         
         $offers = $this->dom->getElementsByTagName('offer');
+        $listLang = $this->model_localisation_language->getLanguages();
+        sort($listLang);
         
-        
-        
+        $data['product_store'] = [
+            'store_id' => 0
+        ];
+
         foreach($offers as $product) {
             
-            $listLang = $this->model_localisation_language->getLanguages();
-            sort($listLang);
-            
             $data['model'] = $product->getElementsByTagName('model')->item(0)->nodeValue;
+            $data['sku'] = '';
+            $data['upc'] = '';
+            $data['ean'] = '';
+            $data['jan'] = '';
+            $data['isbn'] = '';
+            $data['mpn'] = '';
+            $data['location'] = '';        
             $data['quantity'] = $product->getAttribute('instock');
+            $data['minimum'] = 1;
+            $data['subtract'] = 1;
             $data['stock_status_id'] = 6;
             $data['date_available'] = date_format(date_create($this->date_modified), 'Y-m-d');
-            $data['manufacturer_id'] = $product->getElementsByTagName('vendorCode')->item(0)->nodeValue;            
+            $data['manufacturer'] = $product->getElementsByTagName('vendor')->item(0)->nodeValue;
+            $data['shipping'] = 1;
             $data['price'] = $product->getElementsByTagName('price')->item(0)->nodeValue;
+            $data['points'] = 0;
+            $data['weight'] = '0.00000000';
+            $data['weight_class_id'] = 0;
+            $data['length'] = '0.00000000';
+            $data['width'] = '0.00000000';
+            $data['height'] = '0.00000000';
+            $data['length_class_id'] = 0;
+            $data['status'] = 1;
+            $data['tax_class_id'] = 9;
+            $data['sort_order'] = 0;
 
-
-
+            $images = $product->getElementsByTagName('picture');
+            $data['image'] = $images->item(0)->nodeValue;
+            unset($data['product_image']);
+            foreach($images as $image) {
+                $data['product_image'][] = [
+                    'image' => $image->nodeValue,
+                    'sort_order' => 0
+                ];
+            }
+            $product_description = $product->getElementsByTagName('description')->item(0)->nodeValue;
+            $name = $product->getElementsByTagName('name')->item(0)->nodeValue;
+            foreach($listLang as $lang) {
+                $data['product_description'][$lang['language_id']] = [
+                    'name' => $name,
+                    'description' => $product_description,
+                    'tag' => '',
+                    'meta_title' => $name,
+                    'meta_description' => $product_description,
+                    'meta_keyword' => '',                    
+                ];
+            }
+            unset($data['product_category']);
+            $data['product_category'][0] = intval($product->getElementsByTagName('categoryId')->item(0)->nodeValue);
+            $categoryHierarchy = $this->getCategoryHierarchy();
+            $categoryLevels = $this->parseJSON($categoryHierarchy['levelstring']);
+            $path_id = $data['product_category'][0];            
+            $level = $categoryLevels->$path_id;
+            for($i = $level; $i > 0; $i--) {
+                $path_id = $this->categoriesArray[$path_id];                
+                $data['product_category'][$i] = $path_id;
+            }
             
             $data['id'] = $product->getAttribute('id');
             $data['available'] = $product->getAttribute('available');
             $data['date_modified'] = $this->date_modified;
-
             $data['currencyId'] = $product->getElementsByTagName('currencyId')->item(0)->nodeValue;
-            $pictures = $product->getElementsByTagName('picture');
             $data['delivery'] = $product->getElementsByTagName('delivery')->item(0)->nodeValue;
-            $data['name'] = $product->getElementsByTagName('name')->item(0)->nodeValue;
-            $data['vendor'] = $product->getElementsByTagName('vendor')->item(0)->nodeValue;
-            $data['description'] = $product->getElementsByTagName('description')->item(0)->nodeValue;
+            $data['filter_name'] = $product->getElementsByTagName('vendor')->item(0)->nodeValue;
+            $manufacturer = $this->model_catalog_manufacturer->getManufacturers($data);
+            unset($data['filter_name']);
+            $data['manufacturer_id'] = $manufacturer[0]['manufacturer_id'];
             $params = $product->getElementsByTagName('param');
-           
-            /**
-             * ??????????????????
-             */
-            $tax_class_id = 9;
-            
             
             $this->model_catalog_product->addProduct($data);
             
 
-            /*try {  
-                $this->dbh->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-                $this->dbh->beginTransaction();
-
-                $sth = $this->dbh->prepare('INSERT INTO `oc_product` (`product_id`, `model`, `sku`, `upc`, `ean`, `jan`, `isbn`, `mpn`, `location`, `quantity`, `stock_status_id`, `image`, `manufacturer_id`, `shipping`, `price`, `points`, `tax_class_id`, `date_available`, `weight`, `weight_class_id`, `length`, `width`, `height`, `length_class_id`, `subtract`, `minimum`, `sort_order`, `status`, `viewed`, `date_added`, `date_modified`) VALUES (:id, :model, "", "", "", "", "", "", "", :quantity, 6, NULL, :manufacturer_id, 1, :price, 0, :tax_class_id, :date_available, "0.00000000", 1, "0.00000000", "0.00000000", "0.00000000", 1, 1, 1, 0, 1, 0, :date_modified, :date_modified');
-                $sth->bindParam(':id', $id, PDO::PARAM_STR, 11);
-                $sth->bindParam(':model', $model, PDO::PARAM_STR, 64);
-                $sth->bindParam(':quantity', $quantity, PDO::PARAM_INT, 4);
-                $sth->bindParam(':manufacturer_id', $manufacturer_id, PDO::PARAM_INT, 11);
-                $sth->bindParam(':price', $price, PDO::PARAM_STR, 20);
-                $sth->bindParam(':tax_class_id', $tax_class_id, PDO::PARAM_INT, 11);
-                $sth->bindParam(':date_available', $date_available, PDO::PARAM_STR, 10);
-                $sth->bindParam(':date_modified', $date_modified, PDO::PARAM_STR, 16);
-                
-                //$sth->execute();
-                
-                foreach($listLang as $lang) {
-                    
-                    foreach($params as $param) {
-                        
-                        $attrName = $param->getAttribute('name');
-                        $attrText = $param->nodeValue;
-                        $sth = $this->dbh->prepare('INSERT INTO `oc_product_attribute` (`product_id`, `attribute_id`, `language_id`, `text`) VALUES (:id, 1, :lang, :text)');
-                        $sth->bindParam(':id', $id, PDO::PARAM_STR, 11);
-                        //$sth->bindParam(':attribute_id', $attrId, PDO::PARAM_INT, 11);
-                        $sth->bindParam(':lang', $lang['language_id'], PDO::PARAM_INT, 11);
-                        $sth->bindParam(':text', $attrText, PDO::PARAM_STR, 11);                    
-                        //$sth->execute();
-                    }
-
-                    
-                    $sth = $this->dbh->prepare('INSERT INTO `oc_product_description` (`product_id`, `language_id`, `name`, `description`, `tag`, `meta_title`, `meta_description`, `meta_keyword`) VALUES (:id, :lang, :name, :name, "", :name, "", "")');
-                    $sth->bindParam(':id', $id, PDO::PARAM_STR, 11);
-                    $sth->bindParam(':lang', $lang['language_id'], PDO::PARAM_INT, 11);
-                    $sth->bindParam(':name', $name, PDO::PARAM_STR, 255);
-                    $sth->bindParam(':description', $description, PDO::PARAM_STR, 65535);
-
-                    //$sth->execute();
-                }
-                
-                
-                $sth = $this->dbh->prepare('INSERT INTO `oc_product_to_category` (`product_id`, `category_id`) VALUES (:id, :category_id)');
-                $sth->bindParam(':id', $id, PDO::PARAM_STR, 11);
-                $sth->bindParam(':category_id', $currencyId, PDO::PARAM_INT, 11);                    
-                $sth->execute();
-                
-                $sth = $this->dbh->prepare('INSERT INTO `oc_product_to_store` (`product_id`, `store_id`) VALUES (:id, 0)');
-                $sth->bindParam(':id', $id, PDO::PARAM_STR, 11);
-                //$sth->execute();
-                
-                
-                
-
-                INSERT INTO `oc_product_attribute` (`product_id`, `attribute_id`, `language_id`, `text`) VALUES (43, 2, 1, '1'),
+            /*
+                INSERT INTO `' . DB_PREFIX . 'product_attribute` (`product_id`, `attribute_id`, `language_id`, `text`) VALUES (43, 2, 1, '1'),
 
 
-                INSERT INTO `oc_product_discount` (`product_discount_id`, `product_id`, `customer_group_id`, `quantity`, `priority`, `price`, `date_start`, `date_end`) VALUES (440, 42, 1, 30, 1, '66.0000', '0000-00-00', '0000-00-00');
+                INSERT INTO `' . DB_PREFIX . 'product_discount` (`product_discount_id`, `product_id`, `customer_group_id`, `quantity`, `priority`, `price`, `date_start`, `date_end`) VALUES (440, 42, 1, 30, 1, '66.0000', '0000-00-00', '0000-00-00');
 
-                INSERT INTO `oc_product_image` (`product_image_id`, `product_id`, `image`, `sort_order`) VALUES (2345, 30, 'catalog/demo/canon_eos_5d_2.jpg', 0);
+                INSERT INTO `' . DB_PREFIX . 'product_image` (`product_image_id`, `product_id`, `image`, `sort_order`) VALUES (2345, 30, 'catalog/demo/canon_eos_5d_2.jpg', 0);
 
-                INSERT INTO `oc_product_option` (`product_option_id`, `product_id`, `option_id`, `value`, `required`) VALUES (226, 30, 5, '', 1);
+                INSERT INTO `' . DB_PREFIX . 'product_option` (`product_option_id`, `product_id`, `option_id`, `value`, `required`) VALUES (226, 30, 5, '', 1);
 
-                INSERT INTO `oc_product_option_value` (`product_option_value_id`, `product_option_id`, `product_id`, `option_id`, `option_value_id`, `quantity`, `subtract`, `price`, `price_prefix`, `points`, `points_prefix`, `weight`, `weight_prefix`) VALUES (15, 226, 30, 5, 39, 2, 1, '0.0000', '+', 0, '+', '0.00000000', '+');
+                INSERT INTO `' . DB_PREFIX . 'product_option_value` (`product_option_value_id`, `product_option_id`, `product_id`, `option_id`, `option_value_id`, `quantity`, `subtract`, `price`, `price_prefix`, `points`, `points_prefix`, `weight`, `weight_prefix`) VALUES (15, 226, 30, 5, 39, 2, 1, '0.0000', '+', 0, '+', '0.00000000', '+');
 
-                INSERT INTO `oc_product_related` (`product_id`, `related_id`) VALUES (40, 42);
+                INSERT INTO `' . DB_PREFIX . 'product_related` (`product_id`, `related_id`) VALUES (40, 42);
 
-                INSERT INTO `oc_product_reward` (`product_reward_id`, `product_id`, `customer_group_id`, `points`) VALUES (515, 42, 1, 100);
+                INSERT INTO `' . DB_PREFIX . 'product_reward` (`product_reward_id`, `product_id`, `customer_group_id`, `points`) VALUES (515, 42, 1, 100);
 
-                INSERT INTO `oc_product_special` (`product_special_id`, `product_id`, `customer_group_id`, `priority`, `price`, `date_start`, `date_end`) VALUES (438, 30, 1, 1, '80.0000', '0000-00-00', '0000-00-00');
+                INSERT INTO `' . DB_PREFIX . 'product_special` (`product_special_id`, `product_id`, `customer_group_id`, `priority`, `price`, `date_start`, `date_end`) VALUES (438, 30, 1, 1, '80.0000', '0000-00-00', '0000-00-00');
                  
-                
-                $this->dbh->commit();
-            }
-            
-            catch (Exception $e) {
-                $this->dbh->rollBack();                
-                echo "Ошибка: " . $e->getMessage() .'<br />';
-            }*/
+        */
         } 
     }
         
