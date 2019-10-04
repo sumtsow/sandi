@@ -23,10 +23,11 @@ public function index() {
             $model->import($xml);
         }
 
-
-        $this->session->data['success'] = $this->language->get('text_success');
+        //$this->session->data['success'] = $this->language->get('text_success');
+        $data['success'] = $this->language->get('text_success');
 
         //$this->response->redirect($this->url->link('marketplace/extension', 'user_token=' . $this->session->data['user_token'] . '&type=module', true));
+        $this->response->setOutput($this->load->view('extension/module/import_export_module', $data));
     }
 
     if (isset($this->error['warning'])) {
@@ -44,13 +45,6 @@ public function index() {
     }
 
     $data['breadcrumb'] = $this->getBreadcrumbs();
- 
-    if (!isset($this->request->get['module_id'])) {
-        $data['action'] = $this->url->link('extension/module/import_export_module', 'user_token=' . $this->session->data['user_token'], true);
-    }
-    else {
-        $data['action'] = $this->url->link('extension/module/import_export_module', 'user_token=' . $this->session->data['user_token'] . '&module_id=' . $this->request->get['module_id'], true);
-    }
 
     $data['cancel'] = $this->url->link('marketplace/extension', 'user_token=' . $this->session->data['user_token'] . '&type=module', true);
 
@@ -76,9 +70,6 @@ public function index() {
         if (!$this->user->hasPermission('modify', 'extension/module/import_export_module')) {
             $this->error['warning'] = $this->language->get('error_permission');
         }
-        /*if (!$this->request->post['url']) {
-            $this->error['url'] = $this->language->get('error_url');
-        }*/
         return !$this->error;
     }
     

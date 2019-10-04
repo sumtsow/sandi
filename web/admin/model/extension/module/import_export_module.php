@@ -1,17 +1,12 @@
 <?php
 
+define('DIR_PRODUCT_IMAGE', 'catalog/products/');
 static $registry = null;
 
 class ModelExtensionModuleImportExportModule extends Model {
 
-    private $error = array();
-    protected $null_array = array();
-    protected $use_table_seo_url = false;
-    protected $posted_categories = '';
-
     public function __construct( $registry ) {
         parent::__construct( $registry );
-        $this->use_table_seo_url = version_compare(VERSION,'3.0','>=') ? true : false;
     }
         
     public function import( $xml ) {
@@ -19,41 +14,73 @@ class ModelExtensionModuleImportExportModule extends Model {
         $this->dom = new DOMDocument();
         $this->dom->loadXML($xml);
         $this->rootNode = $this->dom->documentElement;
-        $this->date_modified = $this->rootNode->getAttribute('date');
         $this->dbh = $this->dbConnect();
         $this->load->model('catalog/attribute');
         $this->load->model('catalog/attribute_group');
         $this->load->model('catalog/manufacturer');        
         $this->load->model('catalog/product');
+        $this->load->model('localisation/currency');
         $this->load->model('localisation/language');
+        $this->load->model('localisation/stock_status');
+        $this->load->model('setting/setting');
         $listLang = $this->model_localisation_language->getLanguages();
         sort($listLang);
         $this->listLang = $listLang;
+        $this->setStoreName('Sandi Plus');
         $this->importCurrencies();
         $this->importCategories();
         $this->importDeliveryOptions();
         $this->manufacturers = $this->importManufacturers();
         $this->attributes = $this->importAttributes();
         $this->importProducts();
-        
-        
-        return $this->dom->saveXML();
+        $this->loadImages();
+
+        return true;
+    }
+    
+    private function setStoreName($name) {
+        $this->model_setting_setting->editSettingValue('config', 'config_name', $name);
+        $this->model_setting_setting->editSettingValue('config', 'config_meta_title', $name);
+        return true;
     }
     
     private function importCurrencies() {
+        $sth = $this->dbh->prepare('TRUNCATE TABLE `' . DB_PREFIX . 'currency`');
+        $sth->execute();
         
         $currencies = $this->dom->getElementsByTagName('currency');
-        $date_modified = $this->date_modified;
-            
+        $currencyParams = [
+            'USD' => [
+                'title' => 'US Dollar',
+                'symbol_left' => '$',
+                'symbol_right' => '',                    
+            ],
+            'EUR' => [
+                'title' => 'Euro',
+                'symbol_left' => '',
+                'symbol_right' => '€',                    
+            ],
+            'UAH' => [
+                'title' => 'Гривня',
+                'symbol_left' => '',
+                'symbol_right' => '₴',                    
+            ],
+        ];
+                    
         foreach($currencies as $currency) {
-            $rate = $currency->getAttribute('rate');
-            $id = $currency->getAttribute('id');
-            $sth = $this->dbh->prepare('UPDATE `' . DB_PREFIX . 'currency` SET `value`=?, `date_modified`=? WHERE `code`=?');
-            $sth->bindParam(1, $rate, PDO::PARAM_STR, 16);
-            $sth->bindParam(2, $date_modified, PDO::PARAM_STR, 16);
-            $sth->bindParam(3, $id, PDO::PARAM_STR, 3);
-            $sth->execute(); 
+            
+            $curData = [
+                'title' => $currencyParams[$currency->getAttribute('id')]['title'],
+                'code' => $currency->getAttribute('id'),
+                'symbol_left' => $currencyParams[$currency->getAttribute('id')]['symbol_left'],
+                'symbol_right' => $currencyParams[$currency->getAttribute('id')]['symbol_right'],
+                'decimal_place' => '2',
+                'value' => 1/$currency->getAttribute('rate'),
+                'status' => 1
+            ];
+            $this->model_localisation_currency->addCurrency($curData);
         }
+        unset($curData);
         return true;
     }
     
@@ -74,7 +101,7 @@ class ModelExtensionModuleImportExportModule extends Model {
         $this->categoriesArray = $this->categoriesToArray(); 
         $categoryHierarchy = $this->getCategoryHierarchy();
         $categoryLevels = $this->parseJSON($categoryHierarchy['levelstring']);
-        $date_modified = $this->date_modified;
+        $date_modified = $this->rootNode->getAttribute('date');
   
         foreach($this->categories as $category) {
             
@@ -141,18 +168,22 @@ class ModelExtensionModuleImportExportModule extends Model {
     private function importDeliveryOptions() {
         
         $deliveryOptions = $this->dom->getElementsByTagName('delivery-options');
- 
+        $stock_status_id = 6;
+        
         foreach($deliveryOptions as $option) {
-            
-            $days = $option->getElementsByTagName('option')->item(0)->getAttribute('days') .' Days';
-            
+        $name = $option->getElementsByTagName('option')->item(0)->getAttribute('days') .' Days';            
             foreach($this->listLang as $lang) {
-                $sth = $this->dbh->prepare('UPDATE `' . DB_PREFIX . 'stock_status` SET `name`=:days WHERE `stock_status_id` = 6 AND `language_id`=:lang');
-                $sth->bindParam(':lang', $lang['language_id'], PDO::PARAM_INT, 11);
-                $sth->bindParam(':days', $days, PDO::PARAM_STR, 32);
-                $sth->execute(); 
+                $doData['stock_status'][$lang['language_id']] = [
+                    'stock_status_id' => $stock_status_id,
+                    'language_id' => $lang['language_id'],
+                    'name' => $name
+                ];
             }
-        }
+            
+            $this->model_localisation_stock_status->editStockStatus($stock_status_id, $doData);                 }
+        unset($doData);
+       
+        return true;
     }
     
         
@@ -169,12 +200,12 @@ class ModelExtensionModuleImportExportModule extends Model {
         $manufacturers = array_unique($manufacturers);        
         sort($manufacturers);
         foreach($manufacturers as $manufacturer) {
-            $data['name'] = $manufacturer;
-            $data['manufacturer_store'] = [0];
-            $data['sort_order'] = 0;
-            $this->model_catalog_manufacturer->addManufacturer($data);
+            $mData['name'] = $manufacturer;
+            $mData['manufacturer_store'] = [0];
+            $mData['sort_order'] = 0;
+            $this->model_catalog_manufacturer->addManufacturer($mData);
         }
-        unset($data['name'], $data['image'], $data['manufacturer_store']);
+        unset($mData);
         
         return true;
     }
@@ -191,12 +222,12 @@ class ModelExtensionModuleImportExportModule extends Model {
         $sth3->execute();
         $sth4->execute();
         
-        $data['sort_order'] = 0;
+        $aDdata['sort_order'] = 0;
         foreach($this->listLang as $lang) {
-            $data['attribute_group_description'][$lang['language_id']] = ['name' => STORE_NAME];
+            $aDdata['attribute_group_description'][$lang['language_id']] = ['name' => 'Catalog'];
         }
         
-        $this->model_catalog_attribute_group->addAttributeGroup($data);
+        $this->model_catalog_attribute_group->addAttributeGroup($aDdata);
         
         $params = $this->dom->getElementsByTagName('param');
         foreach($params as $param) {
@@ -207,30 +238,30 @@ class ModelExtensionModuleImportExportModule extends Model {
 
         foreach($attributes as $attribute) {
             
-            $data['attribute_group_id'] = 1;
-            $data['sort_order'] = 0;
+            $aDdata['attribute_group_id'] = 1;
+            $aDdata['sort_order'] = 0;
             
             foreach($this->listLang as $lang) {
-                $data['attribute_description'][$lang['language_id']] = ['name' => $attribute];
+                $aDdata['attribute_description'][$lang['language_id']] = ['name' => $attribute];
             }
-            $this->model_catalog_attribute->addAttribute($data);
+            $this->model_catalog_attribute->addAttribute($aDdata);
         }
-        unset($data['attribute_group_id'], $data['sort_order'], $data['attribute_description']);
+        unset($aDdata);
         
         return true;
     }    
     
     private function importProducts() {
         
-        $sth1   = $this->dbh->prepare('TRUNCATE TABLE `' . DB_PREFIX . 'product`');
-        $sth2   = $this->dbh->prepare('TRUNCATE TABLE `' . DB_PREFIX . 'product_attribute`');
-        $sth3   = $this->dbh->prepare('TRUNCATE TABLE `' . DB_PREFIX . 'product_description`');
-        $sth4   = $this->dbh->prepare('TRUNCATE TABLE `' . DB_PREFIX . 'product_discount`');
-        $sth5   = $this->dbh->prepare('TRUNCATE TABLE `' . DB_PREFIX . 'product_filter`');
-        $sth6   = $this->dbh->prepare('TRUNCATE TABLE `' . DB_PREFIX . 'product_image`');
-        $sth7   = $this->dbh->prepare('TRUNCATE TABLE `' . DB_PREFIX . 'product_option`');
-        $sth8   = $this->dbh->prepare('TRUNCATE TABLE `' . DB_PREFIX . 'product_option_value`');
-        $sth9   = $this->dbh->prepare('TRUNCATE TABLE `' . DB_PREFIX . 'product_related`');
+        $sth1  = $this->dbh->prepare('TRUNCATE TABLE `' . DB_PREFIX . 'product`');
+        $sth2  = $this->dbh->prepare('TRUNCATE TABLE `' . DB_PREFIX . 'product_attribute`');
+        $sth3  = $this->dbh->prepare('TRUNCATE TABLE `' . DB_PREFIX . 'product_description`');
+        $sth4  = $this->dbh->prepare('TRUNCATE TABLE `' . DB_PREFIX . 'product_discount`');
+        $sth5  = $this->dbh->prepare('TRUNCATE TABLE `' . DB_PREFIX . 'product_filter`');
+        $sth6  = $this->dbh->prepare('TRUNCATE TABLE `' . DB_PREFIX . 'product_image`');
+        $sth7  = $this->dbh->prepare('TRUNCATE TABLE `' . DB_PREFIX . 'product_option`');
+        $sth8  = $this->dbh->prepare('TRUNCATE TABLE `' . DB_PREFIX . 'product_option_value`');
+        $sth9  = $this->dbh->prepare('TRUNCATE TABLE `' . DB_PREFIX . 'product_related`');
         $sth10 = $this->dbh->prepare('TRUNCATE TABLE `' . DB_PREFIX . 'product_reward`');
         $sth11 = $this->dbh->prepare('TRUNCATE TABLE `' . DB_PREFIX . 'product_special`');
         $sth12 = $this->dbh->prepare('TRUNCATE TABLE `' . DB_PREFIX . 'product_to_category`');
@@ -260,52 +291,54 @@ class ModelExtensionModuleImportExportModule extends Model {
         
         $offers = $this->dom->getElementsByTagName('offer');
         
-        $data['product_store'] = [
+        $pData['product_store'] = [
             'store_id' => 0
         ];
 
         foreach($offers as $product) {
             
-            $data['model'] = $product->getElementsByTagName('model')->item(0)->nodeValue;
-            $data['sku'] = '';
-            $data['upc'] = '';
-            $data['ean'] = '';
-            $data['jan'] = '';
-            $data['isbn'] = '';
-            $data['mpn'] = '';
-            $data['location'] = '';        
-            $data['quantity'] = $product->getAttribute('instock');
-            $data['minimum'] = 1;
-            $data['subtract'] = 1;
-            $data['stock_status_id'] = 6;
-            $data['date_available'] = date_format(date_create($this->date_modified), 'Y-m-d');
-            $data['manufacturer'] = $product->getElementsByTagName('vendor')->item(0)->nodeValue;
-            $data['shipping'] = 1;
-            $data['price'] = $product->getElementsByTagName('price')->item(0)->nodeValue;
-            $data['points'] = 0;
-            $data['weight'] = '0.00000000';
-            $data['weight_class_id'] = 0;
-            $data['length'] = '0.00000000';
-            $data['width'] = '0.00000000';
-            $data['height'] = '0.00000000';
-            $data['length_class_id'] = 0;
-            $data['status'] = 1;
-            $data['tax_class_id'] = 10;
-            $data['sort_order'] = 0;
+            $pData['model'] = $product->getElementsByTagName('model')->item(0)->nodeValue;
+            $pData['sku'] = '';
+            $pData['upc'] = '';
+            $pData['ean'] = '';
+            $pData['jan'] = '';
+            $pData['isbn'] = '';
+            $pData['mpn'] = '';
+            $pData['location'] = '';        
+            $pData['quantity'] = $product->getAttribute('instock');
+            $pData['minimum'] = 1;
+            $pData['subtract'] = 1;
+            $pData['stock_status_id'] = 6;
+            $pData['date_available'] = date_format(date_create($this->date_modified), 'Y-m-d');
+            $pData['manufacturer'] = $product->getElementsByTagName('vendor')->item(0)->nodeValue;
+            $pData['shipping'] = 1;
+            $pData['price'] = $product->getElementsByTagName('price')->item(0)->nodeValue;
+            $pData['points'] = 0;
+            $pData['weight'] = '0.00000000';
+            $pData['weight_class_id'] = 0;
+            $pData['length'] = '0.00000000';
+            $pData['width'] = '0.00000000';
+            $pData['height'] = '0.00000000';
+            $pData['length_class_id'] = 0;
+            $pData['status'] = 1;
+            $pData['tax_class_id'] = 10;
+            $pData['sort_order'] = 0;
 
             $images = $product->getElementsByTagName('picture');
-            $data['image'] = $images->item(0)->nodeValue;
-            unset($data['product_image']);
+            $imageFile = DIR_PRODUCT_IMAGE . basename($images->item(0)->nodeValue);
+            $pData['image'] = ($imageFile !== 'no_img.jpg') ? $imageFile : null;
+            unset($pData['product_image']);
             foreach($images as $image) {
-                $data['product_image'][] = [
-                    'image' => $image->nodeValue,
+                $imageFile = DIR_PRODUCT_IMAGE . basename($image->nodeValue);
+                $pData['product_image'][] = [
+                    'image' => ($imageFile !== 'no_img.jpg') ? $imageFile : null,
                     'sort_order' => 0
                 ];
             }
             $product_description = $product->getElementsByTagName('description')->item(0)->nodeValue;
             $name = $product->getElementsByTagName('name')->item(0)->nodeValue;
             foreach($this->listLang as $lang) {
-                $data['product_description'][$lang['language_id']] = [
+                $pData['product_description'][$lang['language_id']] = [
                     'name' => $name,
                     'description' => $product_description,
                     'tag' => '',
@@ -314,51 +347,53 @@ class ModelExtensionModuleImportExportModule extends Model {
                     'meta_keyword' => '',                    
                 ];
             }
-            unset($data['product_category']);
-            $data['product_category'][0] = intval($product->getElementsByTagName('categoryId')->item(0)->nodeValue);
+            unset($pData['product_category']);
+            $pData['product_category'][0] = intval($product->getElementsByTagName('categoryId')->item(0)->nodeValue);
             $categoryHierarchy = $this->getCategoryHierarchy();
             $categoryLevels = $this->parseJSON($categoryHierarchy['levelstring']);
-            $path_id = $data['product_category'][0];            
+            $path_id = $pData['product_category'][0];            
             $level = $categoryLevels->$path_id;
             for($i = $level; $i > 0; $i--) {
                 $path_id = $this->categoriesArray[$path_id];                
-                $data['product_category'][$i] = $path_id;
+                $pData['product_category'][$i] = $path_id;
             }
             
-            $data['id'] = $product->getAttribute('id');
-            $data['available'] = $product->getAttribute('available');
-            $data['date_modified'] = $this->date_modified;
-            $data['currencyId'] = $product->getElementsByTagName('currencyId')->item(0)->nodeValue;
-            $data['delivery'] = $product->getElementsByTagName('delivery')->item(0)->nodeValue;
-            $data['filter_name'] = $product->getElementsByTagName('vendor')->item(0)->nodeValue;
-            $manufacturer = $this->model_catalog_manufacturer->getManufacturers($data);
-            unset($data['filter_name']);
-            $data['manufacturer_id'] = $manufacturer[0]['manufacturer_id'];
+            $pData['id'] = $product->getAttribute('id');
+            $pData['available'] = $product->getAttribute('available');
+            $pData['date_modified'] = $this->date_modified;
+            $pData['currencyId'] = $product->getElementsByTagName('currencyId')->item(0)->nodeValue;
+            $pData['delivery'] = $product->getElementsByTagName('delivery')->item(0)->nodeValue;
+            $pData['filter_name'] = $product->getElementsByTagName('vendor')->item(0)->nodeValue;
+            $manufacturer = $this->model_catalog_manufacturer->getManufacturers($pData);
+            unset($pData['filter_name']);
+            $pData['manufacturer_id'] = $manufacturer[0]['manufacturer_id'];
                         
-            $product_id = $this->model_catalog_product->addProduct($data);
-                    
+            $product_id = $this->model_catalog_product->addProduct($pData);
+            
             $params = $product->getElementsByTagName('param');
             foreach($params as $key => $param) {
-                $data['filter_name'] = $param->getAttribute('name');
-                $attributes = $this->model_catalog_attribute->getAttributes($data);
-                unset($data['filter_name']);
-                $data['product_attribute'][$key] = [
+                $pData['filter_name'] = $param->getAttribute('name');
+                $attributes = $this->model_catalog_attribute->getAttributes($pData);
+                unset($pData['filter_name']);
+                $pData['product_attribute'][$key] = [
                     'product_id' => $product_id,
                     'attribute_id' => $attributes[0]['attribute_id']
                 ];
                 foreach($this->listLang as $lang) {
-                    $data['product_attribute'][$key]['product_attribute_description'][$lang['language_id']] = ['text' => $param->nodeValue];
+                    $pData['product_attribute'][$key]['product_attribute_description'][$lang['language_id']] = ['text' => $param->nodeValue];
                 }
-                //$this->model_catalog_product->editProduct($product_id, $data);
-                unset($data['product_attribute']);
             }
-
-        } 
+            $this->model_catalog_product->editProduct($product_id, $pData);
+        }
+        unset($pData);
+        
+        return true;
     }
         
     private function dbConnect() {
         $dbh = new PDO('mysql:dbname=' . DB_DATABASE . ';host='. DB_HOSTNAME, DB_USERNAME, DB_PASSWORD);
         $dbh->exec('SET NAMES utf8');
+        
         return $dbh;
     }
     
@@ -405,6 +440,20 @@ class ModelExtensionModuleImportExportModule extends Model {
     
     private function parseJSON($mystring) {
         return json_decode('{' . rtrim($mystring, ', ') . '}');
+    }
+    
+    private function loadImages() {
+        if(!(file_exists(DIR_IMAGE . DIR_PRODUCT_IMAGE) && is_dir(DIR_IMAGE . DIR_PRODUCT_IMAGE))) {
+            mkdir(DIR_IMAGE . DIR_PRODUCT_IMAGE);
+        }
+        $images = $this->dom->getElementsByTagName('picture');
+        foreach($images as $image) {
+            $url = $image->nodeValue;
+            $filename = basename($url);
+            $content = file_get_contents($url);
+            file_put_contents(DIR_IMAGE . DIR_PRODUCT_IMAGE . $filename, $content);
+        }
+        return true;
     }
     
 }
