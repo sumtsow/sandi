@@ -338,23 +338,21 @@ class ModelExtensionModuleImportExportModule extends Model {
             $product_id = $this->model_catalog_product->addProduct($data);
                     
             $params = $product->getElementsByTagName('param');
-            foreach($params as $param) {
+            foreach($params as $key => $param) {
                 $data['filter_name'] = $param->getAttribute('name');
                 $attributes = $this->model_catalog_attribute->getAttributes($data);
                 unset($data['filter_name']);
-                $data['product_attribute'] = [
+                $data['product_attribute'][$key] = [
                     'product_id' => $product_id,
-                    'attribute_id' => $attributes[0]['attribute_id'],
+                    'attribute_id' => $attributes[0]['attribute_id']
                 ];
                 foreach($this->listLang as $lang) {
-                    $data['product_attribute']['product_attribute_description'][$lang['language_id']] = [
-                        'text' => $param->nodeValue            
-                    ];
+                    $data['product_attribute'][$key]['product_attribute_description'][$lang['language_id']] = ['text' => $param->nodeValue];
                 }
-                $this->model_catalog_product->editProduct($product_id, $data);
+                //$this->model_catalog_product->editProduct($product_id, $data);
+                unset($data['product_attribute']);
             }
-            
-            return true;
+
         } 
     }
         
