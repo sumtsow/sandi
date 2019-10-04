@@ -21,14 +21,19 @@ class ModelExtensionModuleImportExportModule extends Model {
         $this->rootNode = $this->dom->documentElement;
         $this->date_modified = $this->rootNode->getAttribute('date');
         $this->dbh = $this->dbConnect();
-        $this->load->model('localisation/language');
+        $this->load->model('catalog/attribute');
+        $this->load->model('catalog/attribute_group');
+        $this->load->model('catalog/manufacturer');        
         $this->load->model('catalog/product');
-        $this->load->model('catalog/manufacturer');
-        
+        $this->load->model('localisation/language');
+        $listLang = $this->model_localisation_language->getLanguages();
+        sort($listLang);
+        $this->listLang = $listLang;
         $this->importCurrencies();
         $this->importCategories();
         $this->importDeliveryOptions();
         $this->manufacturers = $this->importManufacturers();
+        $this->attributes = $this->importAttributes();
         $this->importProducts();
         
         
@@ -70,8 +75,6 @@ class ModelExtensionModuleImportExportModule extends Model {
         $categoryHierarchy = $this->getCategoryHierarchy();
         $categoryLevels = $this->parseJSON($categoryHierarchy['levelstring']);
         $date_modified = $this->date_modified;
-        $listLang = $this->model_localisation_language->getLanguages();
-        sort($listLang);
   
         foreach($this->categories as $category) {
             
@@ -92,7 +95,7 @@ class ModelExtensionModuleImportExportModule extends Model {
                     $sth->bindParam(':date_modified', $date_modified, PDO::PARAM_STR, 16);
                     $sth->execute();
 
-                    foreach($listLang as $lang) {
+                    foreach($this->listLang as $lang) {
                         $sth = $this->dbh->prepare('INSERT INTO `' . DB_PREFIX . 'category_description` (`category_id`, `language_id`, `name`, `description`, `meta_title`, `meta_description`, `meta_keyword`) VALUES (:id, :language_id, :name, :description, :name, :description, "")');
                         $sth->bindParam(':id', $id, PDO::PARAM_INT);
                         $sth->bindParam(':language_id', $lang['language_id'], PDO::PARAM_INT, 11);
@@ -137,15 +140,13 @@ class ModelExtensionModuleImportExportModule extends Model {
     
     private function importDeliveryOptions() {
         
-        $listLang = $this->model_localisation_language->getLanguages();
-        sort($listLang);
         $deliveryOptions = $this->dom->getElementsByTagName('delivery-options');
  
         foreach($deliveryOptions as $option) {
             
             $days = $option->getElementsByTagName('option')->item(0)->getAttribute('days') .' Days';
             
-            foreach($listLang as $lang) {
+            foreach($this->listLang as $lang) {
                 $sth = $this->dbh->prepare('UPDATE `' . DB_PREFIX . 'stock_status` SET `name`=:days WHERE `stock_status_id` = 6 AND `language_id`=:lang');
                 $sth->bindParam(':lang', $lang['language_id'], PDO::PARAM_INT, 11);
                 $sth->bindParam(':days', $days, PDO::PARAM_STR, 32);
@@ -178,6 +179,43 @@ class ModelExtensionModuleImportExportModule extends Model {
         return true;
     }
     
+    private function importAttributes() {
+
+        $sth1 = $this->dbh->prepare('TRUNCATE TABLE `' . DB_PREFIX . 'attribute_group_description`');
+        $sth2 = $this->dbh->prepare('TRUNCATE TABLE `' . DB_PREFIX . 'attribute_group`');
+        $sth3 = $this->dbh->prepare('TRUNCATE TABLE `' . DB_PREFIX . 'attribute_description`'); 
+        $sth4 = $this->dbh->prepare('TRUNCATE TABLE `' . DB_PREFIX . 'attribute`');
+
+        $sth1->execute();
+        $sth2->execute();
+        $sth3->execute();
+        $sth4->execute();
+        
+        $data['sort_order'] = 0;
+        foreach($this->listLang as $lang) {
+            $data['attribute_group_description'][$lang['language_id']] = ['name' => STORE_NAME];
+        }
+        
+        $this->model_catalog_attribute_group->addAttributeGroup($data);
+        
+        $params = $this->dom->getElementsByTagName('param');
+        foreach($params as $param) {
+            $attributes[] = $param->getAttribute('name');
+        }
+        $attributes = array_unique($attributes);        
+        sort($attributes);
+
+        foreach($attributes as $attribute) {
+            $data['name'] = $manufacturer;
+            $data['manufacturer_store'] = [0];
+            $data['sort_order'] = 0;
+            
+            $this->model_catalog_attribute->addAttribute($data);
+        }
+        unset($data['name'], $data['image'], $data['manufacturer_store']);
+        
+        return true;
+    }    
     
     private function importProducts() {
         
@@ -218,8 +256,6 @@ class ModelExtensionModuleImportExportModule extends Model {
         $sth1->execute();
         
         $offers = $this->dom->getElementsByTagName('offer');
-        $listLang = $this->model_localisation_language->getLanguages();
-        sort($listLang);
         
         $data['product_store'] = [
             'store_id' => 0
@@ -251,7 +287,7 @@ class ModelExtensionModuleImportExportModule extends Model {
             $data['height'] = '0.00000000';
             $data['length_class_id'] = 0;
             $data['status'] = 1;
-            $data['tax_class_id'] = 9;
+            $data['tax_class_id'] = 10;
             $data['sort_order'] = 0;
 
             $images = $product->getElementsByTagName('picture');
@@ -265,7 +301,7 @@ class ModelExtensionModuleImportExportModule extends Model {
             }
             $product_description = $product->getElementsByTagName('description')->item(0)->nodeValue;
             $name = $product->getElementsByTagName('name')->item(0)->nodeValue;
-            foreach($listLang as $lang) {
+            foreach($this->listLang as $lang) {
                 $data['product_description'][$lang['language_id']] = [
                     'name' => $name,
                     'description' => $product_description,
@@ -295,30 +331,15 @@ class ModelExtensionModuleImportExportModule extends Model {
             $manufacturer = $this->model_catalog_manufacturer->getManufacturers($data);
             unset($data['filter_name']);
             $data['manufacturer_id'] = $manufacturer[0]['manufacturer_id'];
+            
             $params = $product->getElementsByTagName('param');
             
             $this->model_catalog_product->addProduct($data);
             
 
             /*
-                INSERT INTO `' . DB_PREFIX . 'product_attribute` (`product_id`, `attribute_id`, `language_id`, `text`) VALUES (43, 2, 1, '1'),
-
-
-                INSERT INTO `' . DB_PREFIX . 'product_discount` (`product_discount_id`, `product_id`, `customer_group_id`, `quantity`, `priority`, `price`, `date_start`, `date_end`) VALUES (440, 42, 1, 30, 1, '66.0000', '0000-00-00', '0000-00-00');
-
-                INSERT INTO `' . DB_PREFIX . 'product_image` (`product_image_id`, `product_id`, `image`, `sort_order`) VALUES (2345, 30, 'catalog/demo/canon_eos_5d_2.jpg', 0);
-
-                INSERT INTO `' . DB_PREFIX . 'product_option` (`product_option_id`, `product_id`, `option_id`, `value`, `required`) VALUES (226, 30, 5, '', 1);
-
-                INSERT INTO `' . DB_PREFIX . 'product_option_value` (`product_option_value_id`, `product_option_id`, `product_id`, `option_id`, `option_value_id`, `quantity`, `subtract`, `price`, `price_prefix`, `points`, `points_prefix`, `weight`, `weight_prefix`) VALUES (15, 226, 30, 5, 39, 2, 1, '0.0000', '+', 0, '+', '0.00000000', '+');
-
-                INSERT INTO `' . DB_PREFIX . 'product_related` (`product_id`, `related_id`) VALUES (40, 42);
-
-                INSERT INTO `' . DB_PREFIX . 'product_reward` (`product_reward_id`, `product_id`, `customer_group_id`, `points`) VALUES (515, 42, 1, 100);
-
-                INSERT INTO `' . DB_PREFIX . 'product_special` (`product_special_id`, `product_id`, `customer_group_id`, `priority`, `price`, `date_start`, `date_end`) VALUES (438, 30, 1, 1, '80.0000', '0000-00-00', '0000-00-00');
-                 
-        */
+                INSERT INTO `' . DB_PREFIX . 'product_attribute` (`product_id`, `attribute_id`, `language_id`, `text`) VALUES (43, 2, 1, '1'),                
+            */
         } 
     }
         
