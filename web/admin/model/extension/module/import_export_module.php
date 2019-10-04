@@ -206,13 +206,16 @@ class ModelExtensionModuleImportExportModule extends Model {
         sort($attributes);
 
         foreach($attributes as $attribute) {
-            $data['name'] = $manufacturer;
-            $data['manufacturer_store'] = [0];
+            
+            $data['attribute_group_id'] = 1;
             $data['sort_order'] = 0;
             
+            foreach($this->listLang as $lang) {
+                $data['attribute_description'][$lang['language_id']] = ['name' => $attribute];
+            }
             $this->model_catalog_attribute->addAttribute($data);
         }
-        unset($data['name'], $data['image'], $data['manufacturer_store']);
+        unset($data['attribute_group_id'], $data['sort_order'], $data['attribute_description']);
         
         return true;
     }    
@@ -331,15 +334,27 @@ class ModelExtensionModuleImportExportModule extends Model {
             $manufacturer = $this->model_catalog_manufacturer->getManufacturers($data);
             unset($data['filter_name']);
             $data['manufacturer_id'] = $manufacturer[0]['manufacturer_id'];
-            
+                        
+            $product_id = $this->model_catalog_product->addProduct($data);
+                    
             $params = $product->getElementsByTagName('param');
+            foreach($params as $param) {
+                $data['filter_name'] = $param->getAttribute('name');
+                $attributes = $this->model_catalog_attribute->getAttributes($data);
+                unset($data['filter_name']);
+                $data['product_attribute'] = [
+                    'product_id' => $product_id,
+                    'attribute_id' => $attributes[0]['attribute_id'],
+                ];
+                foreach($this->listLang as $lang) {
+                    $data['product_attribute']['product_attribute_description'][$lang['language_id']] = [
+                        'text' => $param->nodeValue            
+                    ];
+                }
+                $this->model_catalog_product->editProduct($product_id, $data);
+            }
             
-            $this->model_catalog_product->addProduct($data);
-            
-
-            /*
-                INSERT INTO `' . DB_PREFIX . 'product_attribute` (`product_id`, `attribute_id`, `language_id`, `text`) VALUES (43, 2, 1, '1'),                
-            */
+            return true;
         } 
     }
         
