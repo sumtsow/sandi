@@ -11,22 +11,33 @@ class ControllerExtensionModuleImportExportModule extends Controller {
     
 public function index() {
     $this->load->language('extension/module/import_export_module');
+    $this->load->model('extension/module/import_export_module');
+    $model = $this->model_extension_module_import_export_module;
 
     $this->document->setTitle($this->language->get('heading_title'));
 
+    $data['import'] = 'active';
+    
     if (($this->request->server['REQUEST_METHOD'] == 'POST') && $this->validate()) {
         
+
         if (isset($this->request->post['url'])) {
             $xml = file_get_contents($this->request->post['url']);
-            $this->load->model('extension/module/import_export_module');
-            $model = $this->model_extension_module_import_export_module;
             $model->import($xml);
+            $data['import'] = 'active';
+            $data['export'] = '';
         }
+        
+        elseif (isset($this->request->post['save'])) {
+            $data['xml'] = $model->export();
+            $data['import'] = '';
+            $data['export'] = 'active';
+        }
+        
 
-        //$this->session->data['success'] = $this->language->get('text_success');
+
         $data['success'] = $this->language->get('text_success');
 
-        //$this->response->redirect($this->url->link('marketplace/extension', 'user_token=' . $this->session->data['user_token'] . '&type=module', true));
         $this->response->setOutput($this->load->view('extension/module/import_export_module', $data));
     }
 
@@ -43,6 +54,13 @@ public function index() {
     else {
         $data['error_url'] = '';
     }
+    
+    if (isset($this->error['save'])) {
+        $data['error_save'] = $this->error['save'];
+    }
+    else {
+        $data['error_save'] = '';
+    }
 
     $data['breadcrumb'] = $this->getBreadcrumbs();
 
@@ -50,7 +68,7 @@ public function index() {
 
     $data['user_token'] = $this->session->data['user_token'];
 
-    if (isset($this->request->post['name'])) {
+    /*if (isset($this->request->post['name'])) {
         $data['name'] = $this->request->post['name'];
     }
     elseif (!empty($module_info)) {
@@ -58,7 +76,7 @@ public function index() {
     }
     else {
         $data['name'] = '';
-    }
+    }*/
 
         $data['header'] = $this->load->controller('common/header');
         $data['column_left'] = $this->load->controller('common/column_left');

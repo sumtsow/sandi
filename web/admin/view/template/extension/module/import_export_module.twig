@@ -35,16 +35,13 @@
         <div class="panel-body">
 
             <ul class="nav nav-tabs">
-                <li class="active"><a href="#tab-import" data-toggle="tab">{{ tab_import }}</a></li>                
-                <li><a href="#tab-export" data-toggle="tab">{{ tab_export }}</a></li>
-                <li><a href="#tab-settings" data-toggle="tab">{{ tab_settings }}</a></li>
+                <li class="{{ import }}"><a href="#tab-import" data-toggle="tab">{{ tab_import }}</a></li>                
+                <li class="{{ export }}"><a href="#tab-export" data-toggle="tab">{{ tab_export }}</a></li>
             </ul>
 
             <div class="tab-content">
-                
-                <div class="tab-pane active" id="tab-import">
-                    
-                    <form action="{{ action }}" method="post" enctype="multipart/form-data" id="form-url" class="form-horizontal">
+                <div class="tab-pane {{ import }}" id="tab-import">
+                    <form method="post" enctype="multipart/form-data" id="form-url" class="form-horizontal">
                         <div class="form-group">
                             <label class="col-sm-2 control-label" for="input-url">{{ entry_URL }}</label>
                             <div class="col-sm-9">
@@ -54,78 +51,48 @@
                                 {% endif %}
                             </div>
                             <div class="col justify-content-end pt-3 pl-3">
-                                <button type="submit" class="btn btn-primary">Ok</button>
+                                <a data-toggle="modal" data-target="#Modal" class="btn btn-primary float-right text-light" title="Import" >Import</a>
                             </div>
                         </div>
                     </form>
-                            
                 </div>
                             
-                <div class="tab-pane" id="tab-export">
-                    {{ tab_export }}
+                <div class="tab-pane {{ export }}" id="tab-export">
+                    <form method="post" enctype="multipart/form-data" id="form-save" class="form-horizontal">
+                        <div class="form-group">
+                            {% if error_save %}
+                            <div class="text-danger">{{ error_save }}</div>
+                            {% endif %}
+                            <label class="col-sm-2 control-label" for="button-export">{{ entry_export }}</label>
+                            <input type="submit" id="button-export" form="form-save" name="save" class="btn btn-primary" value="{{ entry_save }}" />
+                        </div>
+                    </form>
+                        <textarea class="form-control" rows="15">{{ xml }}</textarea>
                 </div>
-
             </div>
         </div>
     </div>
-    
 </div>
-  <script type="text/javascript"><!--
-$('input[name=\'product_name\']').autocomplete({
-	source: function(request, response) {
-		$.ajax({
-			url: 'index.php?route=catalog/product/autocomplete&user_token={{ user_token }}&filter_name=' +  encodeURIComponent(request),
-			dataType: 'json',
-			success: function(json) {
-				response($.map(json, function(item) {
-					return {
-						label: item['name'],
-						value: item['product_id']
-					}
-				}));
-			}
-		});
-	},
-	select: function(item) {
-		$('input[name=\'product_name\']').val('');
-		
-		$('#featured-product' + item['value']).remove();
-		
-		$('#featured-product').append('<div id="featured-product' + item['value'] + '"><i class="fa fa-minus-circle"></i> ' + item['label'] + '<input type="hidden" name="product[]" value="' + item['value'] + '" /></div>');	
-	}
-});
-	
-$('#featured-product').delegate('.fa-minus-circle', 'click', function() {
-	$(this).parent().remove();
-});
+                
+<div class="modal" id="Modal" tabindex="-1" role="dialog">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">{{ modal_caution }}</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="{{ modal_close }}">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <p>{{ modal_confirm }}</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-warning" data-dismiss="modal">{{ modal_cancel }}</button>
+                <button form="form-url" type="button" class="btn btn-danger" onclick="this.form.submit();">{{ modal_agree }}</button>
+            </div>
+        </div>
+    </div>
+</div>
 
-// Category
-$('input[name=\'category\']').autocomplete({
-	'source': function(request, response) {
-		$.ajax({
-			url: 'index.php?route=catalog/category/autocomplete&user_token={{ user_token }}&filter_name=' +  encodeURIComponent(request),
-			dataType: 'json',
-			success: function(json) {
-				response($.map(json, function(item) {
-					return {
-						label: item['name'],
-						value: item['category_id']
-					}
-				}));
-			}
-		});
-	},
-	'select': function(item) {
-		$('input[name=\'category\']').val('');
-
-		$('#product-category' + item['value']).remove();
-
-		$('#product-category').append('<div id="product-category' + item['value'] + '"><i class="fa fa-minus-circle"></i> ' + item['label'] + '<input type="hidden" name="product_category[]" value="' + item['value'] + '" /></div>');
-	}
-});
-
-$('#product-category').delegate('.fa-minus-circle', 'click', function() {
-	$(this).parent().remove();
-});
-//--></script></div>
+</div>
 {{ footer }}

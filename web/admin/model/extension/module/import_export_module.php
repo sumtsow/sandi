@@ -8,7 +8,34 @@ class ModelExtensionModuleImportExportModule extends Model {
     public function __construct( $registry ) {
         parent::__construct( $registry );
     }
+    
+        public function export() {
         
+        $this->load->model('localisation/currency');
+        $this->load->model('localisation/language');
+        $this->load->model('catalog/category');
+        $this->load->model('localisation/stock_status');
+        $this->load->model('catalog/product');        
+        $this->createYmlRoot();
+        //$this->exportCurrencies();
+        //$this->exportCategories();
+        //$this->exportDeliveryOptions();
+        $this->exportProducts();
+        
+        /*
+        $this->load->model('catalog/attribute_group');
+        $this->load->model('catalog/manufacturer');        
+
+        $this->load->model('setting/setting');
+        $this->setStoreName('Sandi Plus');
+
+        $this->manufacturers = $this->exportManufacturers();
+        $this->attributes = $this->exportAttributes();
+        */
+
+        return $this->dom->saveXML();
+    }
+    
     public function import( $xml ) {
         
         $this->dom = new DOMDocument();
@@ -33,7 +60,7 @@ class ModelExtensionModuleImportExportModule extends Model {
         $this->manufacturers = $this->importManufacturers();
         $this->attributes = $this->importAttributes();
         $this->importProducts();
-        $this->loadImages();
+        //$this->loadImages();
 
         return true;
     }
@@ -41,6 +68,19 @@ class ModelExtensionModuleImportExportModule extends Model {
     private function setStoreName($name) {
         $this->model_setting_setting->editSettingValue('config', 'config_name', $name);
         $this->model_setting_setting->editSettingValue('config', 'config_meta_title', $name);
+        return true;
+    }
+    
+    private function createYmlRoot() {
+        $this->dom = new DOMDocument("1.0", "UTF-8");
+        $this->dom->xmlStandalone = true;
+        $root = $this->dom->createElement('yml_catalog');
+        $dateTime = $this->dom->createAttribute('date');
+        $dateTime->value = date('Y-m-d H:i');
+        $root->appendChild($dateTime);
+        $this->dom->appendChild($root);
+        $this->shop = $this->dom->createElement('shop');
+        $root->appendChild($this->shop);
         return true;
     }
     
@@ -81,6 +121,28 @@ class ModelExtensionModuleImportExportModule extends Model {
             $this->model_localisation_currency->addCurrency($curData);
         }
         unset($curData);
+        return true;
+    }
+    
+        
+    private function exportCurrencies() {
+
+        $currenciesNode = $this->dom->createElement('currencies');
+        $this->shop->appendChild($currenciesNode);
+        $curData = [['sort' => 'title']];
+        $currencies = $this->model_localisation_currency->getCurrencies($curData);
+       
+        foreach($currencies as $currency) {
+            $currencyNode = $this->dom->createElement('currency');
+            $currenciesNode->appendChild($currencyNode);
+            $id = $this->dom->createAttribute('id');
+            $id->value = $currency['code'];
+            $currencyNode->appendChild($id);
+            $rate = $this->dom->createAttribute('rate');
+            $rate->value = round(1/$currency['value'], 2);
+            $currencyNode->appendChild($rate);            
+        }
+
         return true;
     }
     
@@ -163,7 +225,35 @@ class ModelExtensionModuleImportExportModule extends Model {
         return true;
     }
     
+    private function exportCategories() {
         
+        $categoriesNode = $this->dom->createElement('categories');
+        $this->shop->appendChild($categoriesNode);
+        $categories = $this->model_catalog_category->getCategories();
+       
+        foreach($categories as $category) {
+            $categoryNode = $this->dom->createElement('category');
+            $categoriesNode->appendChild($categoryNode);
+            
+            $id = $this->dom->createAttribute('id');
+            $id->value = $category['category_id'];
+            $categoryNode->appendChild($id);
+            
+            if($category['parent_id']) {
+                $parent_id = $this->dom->createAttribute('parentId');
+                $parent_id->value = $category['parent_id'];
+                $categoryNode->appendChild($parent_id);
+            }
+            
+            $descriptions = $this->model_catalog_category->getCategoryDescriptions($category['category_id']);
+            $description = $this->dom->createAttribute('description');
+            $description->value = $descriptions[$this->config->get('config_language_id')]['name'];
+            $categoryNode->appendChild($description);
+            $categoryNode->nodeValue = $descriptions[$this->config->get('config_language_id')]['name'];
+        }
+        
+        return true;
+    }
     
     private function importDeliveryOptions() {
         
@@ -186,6 +276,24 @@ class ModelExtensionModuleImportExportModule extends Model {
         return true;
     }
     
+        
+    private function exportDeliveryOptions() {
+        
+        $deliveryOptionsNode = $this->dom->createElement('delivery-options');
+        $this->shop->appendChild($deliveryOptionsNode);
+        $stock_status_id = 6;
+        $deliveryOptions = $this->model_localisation_stock_status->getStockStatusDescriptions($stock_status_id);
+        $optionNode = $this->dom->createElement('option');
+        $deliveryOptionsNode->appendChild($optionNode);        
+        $cost = $this->dom->createAttribute('cost');
+        $cost->value = 0;
+        $optionNode->appendChild($cost);
+        $days = $this->dom->createAttribute('days');
+        $days->value = substr($deliveryOptions[$this->config->get('config_language_id')]['name'], 0, -5);
+        $optionNode->appendChild($days);        
+       
+        return true;
+    }    
         
     private function importManufacturers() {
         $sth1 = $this->dbh->prepare('TRUNCATE TABLE `' . DB_PREFIX . 'manufacturer`');
@@ -341,7 +449,7 @@ class ModelExtensionModuleImportExportModule extends Model {
                 $pData['product_description'][$lang['language_id']] = [
                     'name' => $name,
                     'description' => $product_description,
-                    'tag' => '',
+                    'tag' => $product->getAttribute('id'),
                     'meta_title' => $name,
                     'meta_description' => $product_description,
                     'meta_keyword' => '',                    
@@ -386,6 +494,39 @@ class ModelExtensionModuleImportExportModule extends Model {
             $this->model_catalog_product->editProduct($product_id, $pData);
         }
         unset($pData);
+        
+        return true;
+    }
+    
+        
+    private function exportProducts() {
+        
+        $offersNode = $this->dom->createElement('offers');
+        $this->shop->appendChild($offersNode);
+        $products = $this->model_catalog_product->getProducts();
+       
+        foreach($products as $product) {
+            $offer = $this->dom->createElement('offer');
+            $offersNode->appendChild($offer);
+            
+            $id = $this->dom->createAttribute('id');
+            $id->value = $product['tag'];
+            $offer->appendChild($id);
+            
+            $available = $this->dom->createAttribute('available');
+            $available->value = ($product['status']) ? 'true' : 'false';
+            $offer->appendChild($available);            
+            
+            $instock = $this->dom->createAttribute('instock');
+            $instock->value = $product['quantity'];
+            $offer->appendChild($instock);
+            
+            $offer->appendChild($this->dom->createElement('price', round($product['price'])));
+            $offer->appendChild($this->dom->createElement('currencyId', $this->config->get('config_currency')));
+            $categories = $this->model_catalog_product->getProductCategories($product['product_id']);
+            $offer->appendChild($this->dom->createElement('categoryId', $categories[0]));
+            $offer->appendChild($this->dom->createElement('picture', HTTPS_SERVER . 'web/image/' . $product['image']));
+        }
         
         return true;
     }
