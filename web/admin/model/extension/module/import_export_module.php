@@ -32,9 +32,6 @@ class ModelExtensionModuleImportExportModule extends Model {
         
         $this->dom = new DOMDocument();
         $this->dom->loadXML($xml);
-        if(!$this->dom->validate) {
-            return false;
-        }
         $this->rootNode = $this->dom->documentElement;
         $this->dbh = $this->dbConnect();
         $this->load->model('catalog/attribute');
@@ -55,7 +52,7 @@ class ModelExtensionModuleImportExportModule extends Model {
         $this->manufacturers = $this->importManufacturers();
         $this->attributes = $this->importAttributes();
         $this->importProducts();
-        //$this->loadImages();
+        $this->loadImages();
 
         return true;
     }
@@ -604,6 +601,9 @@ class ModelExtensionModuleImportExportModule extends Model {
         if(!(file_exists(DIR_IMAGE . DIR_PRODUCT_IMAGE) && is_dir(DIR_IMAGE . DIR_PRODUCT_IMAGE))) {
             mkdir(DIR_IMAGE . DIR_PRODUCT_IMAGE);
         }
+        else {
+            $this->clearDir();
+        }
         $images = $this->dom->getElementsByTagName('picture');
         foreach($images as $image) {
             $url = $image->nodeValue;
@@ -613,6 +613,15 @@ class ModelExtensionModuleImportExportModule extends Model {
         }
         return true;
     }
+    
+    private function clearDir() {
+    if (file_exists(DIR_IMAGE . DIR_PRODUCT_IMAGE)) {
+        foreach (glob(DIR_IMAGE . DIR_PRODUCT_IMAGE . '*') as $file) {
+            unlink($file);
+        }
+    }
+    
+}
     
 }
 
