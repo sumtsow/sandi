@@ -25,6 +25,7 @@ $_['modal_confirm']    = '<strong>Attention!</strong><br /> All existing product
 
 // Error
 $_['error_permission'] = 'Warning: You do not have permission to modify this module!';
+$_['error_XML']  = 'XML Error';
 
 
 

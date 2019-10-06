@@ -11,27 +11,19 @@ class ModelExtensionModuleImportExportModule extends Model {
     
         public function export() {
         
+        $this->load->model('catalog/attribute');
+        $this->load->model('catalog/category');
+        $this->load->model('catalog/product');   
+        $this->load->model('catalog/manufacturer');        
         $this->load->model('localisation/currency');
         $this->load->model('localisation/language');
-        $this->load->model('catalog/category');
         $this->load->model('localisation/stock_status');
-        $this->load->model('catalog/product');        
+ 
         $this->createYmlRoot();
-        //$this->exportCurrencies();
-        //$this->exportCategories();
-        //$this->exportDeliveryOptions();
+        $this->exportCurrencies();
+        $this->exportCategories();
+        $this->exportDeliveryOptions();
         $this->exportProducts();
-        
-        /*
-        $this->load->model('catalog/attribute_group');
-        $this->load->model('catalog/manufacturer');        
-
-        $this->load->model('setting/setting');
-        $this->setStoreName('Sandi Plus');
-
-        $this->manufacturers = $this->exportManufacturers();
-        $this->attributes = $this->exportAttributes();
-        */
 
         return $this->dom->saveXML();
     }
@@ -40,6 +32,9 @@ class ModelExtensionModuleImportExportModule extends Model {
         
         $this->dom = new DOMDocument();
         $this->dom->loadXML($xml);
+        if(!$this->dom->validate) {
+            return false;
+        }
         $this->rootNode = $this->dom->documentElement;
         $this->dbh = $this->dbConnect();
         $this->load->model('catalog/attribute');
@@ -419,7 +414,7 @@ class ModelExtensionModuleImportExportModule extends Model {
             $pData['stock_status_id'] = 6;
             $pData['date_available'] = date_format(date_create($this->date_modified), 'Y-m-d');
             $pData['manufacturer'] = $product->getElementsByTagName('vendor')->item(0)->nodeValue;
-            $pData['shipping'] = 1;
+            $pData['shipping'] = ($product->getElementsByTagName('delivery')->item(0)->nodeValue) ? 1: 0;
             $pData['price'] = $product->getElementsByTagName('price')->item(0)->nodeValue;
             $pData['points'] = 0;
             $pData['weight'] = '0.00000000';
@@ -431,7 +426,6 @@ class ModelExtensionModuleImportExportModule extends Model {
             $pData['status'] = 1;
             $pData['tax_class_id'] = 10;
             $pData['sort_order'] = 0;
-
             $images = $product->getElementsByTagName('picture');
             $imageFile = DIR_PRODUCT_IMAGE . basename($images->item(0)->nodeValue);
             $pData['image'] = ($imageFile !== 'no_img.jpg') ? $imageFile : null;
@@ -470,7 +464,6 @@ class ModelExtensionModuleImportExportModule extends Model {
             $pData['available'] = $product->getAttribute('available');
             $pData['date_modified'] = $this->date_modified;
             $pData['currencyId'] = $product->getElementsByTagName('currencyId')->item(0)->nodeValue;
-            $pData['delivery'] = $product->getElementsByTagName('delivery')->item(0)->nodeValue;
             $pData['filter_name'] = $product->getElementsByTagName('vendor')->item(0)->nodeValue;
             $manufacturer = $this->model_catalog_manufacturer->getManufacturers($pData);
             unset($pData['filter_name']);
@@ -526,6 +519,30 @@ class ModelExtensionModuleImportExportModule extends Model {
             $categories = $this->model_catalog_product->getProductCategories($product['product_id']);
             $offer->appendChild($this->dom->createElement('categoryId', $categories[0]));
             $offer->appendChild($this->dom->createElement('picture', HTTPS_SERVER . 'web/image/' . $product['image']));
+            $images = $this->model_catalog_product->getProductImages($product['product_id']);
+            foreach($images as $image) {
+                if($product['image'] !== $image['image']) {
+                    $offer->appendChild($this->dom->createElement('picture', HTTPS_SERVER . 'web/image/' . $image['image']));
+                }
+            }
+            $offer->appendChild($this->dom->createElement('delivery', ($product['shipping']) ? 'true' : 'false' ));
+            $descrptions = $this->model_catalog_product->getProductDescriptions($product['product_id']);
+            $offer->appendChild($this->dom->createElement('name', $descrptions[$this->config->get('config_language_id')]['name']) );
+            $manufacturer = $this->model_catalog_manufacturer->getManufacturer($product['manufacturer_id']);
+            $offer->appendChild($this->dom->createElement('vendor', $manufacturer['name']) );
+            $offer->appendChild($this->dom->createElement('vendorCode', $descrptions[$this->config->get('config_language_id')]['tag']) );
+            $offer->appendChild($this->dom->createElement('model', $product['model']) );
+            $offer->appendChild($this->dom->createElement('description', $descrptions[$this->config->get('config_language_id')]['description']) );
+            $attributes = $this->model_catalog_product->getProductAttributes($product['product_id']);
+            foreach($attributes as $attribute) {
+                $value = $attribute['product_attribute_description'][$this->config->get('config_language_id')]['text'];
+                $productAttribute = $this->model_catalog_attribute->getAttribute($attribute['attribute_id']);
+                $param = $this->dom->createElement('param', $value);
+                $name = $this->dom->createAttribute('name');
+                $name->value = $productAttribute['name'];
+                $param->appendChild($name);
+                $offer->appendChild($param);
+            }
         }
         
         return true;

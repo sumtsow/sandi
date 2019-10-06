@@ -23,18 +23,21 @@ public function index() {
 
         if (isset($this->request->post['url'])) {
             $xml = file_get_contents($this->request->post['url']);
-            $model->import($xml);
-            $data['import'] = 'active';
-            $data['export'] = '';
+            if($model->import($xml)) {
+                $data['import'] = 'active';
+                $data['export'] = '';
+            }
+            else {
+                $this->error['url'] = '';
+            }
         }
         
         elseif (isset($this->request->post['save'])) {
             $data['xml'] = $model->export();
             $data['import'] = '';
             $data['export'] = 'active';
+            
         }
-        
-
 
         $data['success'] = $this->language->get('text_success');
 
