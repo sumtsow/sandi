@@ -1,6 +1,8 @@
 <?php
 
-define('DIR_PRODUCT_IMAGE', 'catalog/products/');
+define('DIR_PRODUCT_IMAGE', DIR_IMAGE . 'catalog/products/');
+define('DIR_EXPORT_XML', DIR_CATALOG . 'export_xml/');
+
 static $registry = null;
 
 class ModelExtensionModuleImportExportModule extends Model {
@@ -24,8 +26,8 @@ class ModelExtensionModuleImportExportModule extends Model {
         $this->exportCategories();
         $this->exportDeliveryOptions();
         $this->exportProducts();
-
-        return $this->dom->saveXML();
+        $this->saveFile($this->dom->saveXML());
+        return true;
     }
     
     public function import( $xml ) {
@@ -598,8 +600,8 @@ class ModelExtensionModuleImportExportModule extends Model {
     }
     
     private function loadImages() {
-        if(!(file_exists(DIR_IMAGE . DIR_PRODUCT_IMAGE) && is_dir(DIR_IMAGE . DIR_PRODUCT_IMAGE))) {
-            mkdir(DIR_IMAGE . DIR_PRODUCT_IMAGE);
+        if(!(file_exists(DIR_PRODUCT_IMAGE) && is_dir(DIR_PRODUCT_IMAGE))) {
+            mkdir(DIR_PRODUCT_IMAGE);
         }
         else {
             $this->clearDir();
@@ -609,22 +611,24 @@ class ModelExtensionModuleImportExportModule extends Model {
             $url = $image->nodeValue;
             $filename = basename($url);
             $content = file_get_contents($url);
-            file_put_contents(DIR_IMAGE . DIR_PRODUCT_IMAGE . $filename, $content);
+            file_put_contents(DIR_PRODUCT_IMAGE . $filename, $content);
         }
         return true;
     }
     
     private function clearDir() {
-    if (file_exists(DIR_IMAGE . DIR_PRODUCT_IMAGE)) {
-        foreach (glob(DIR_IMAGE . DIR_PRODUCT_IMAGE . '*') as $file) {
-            unlink($file);
+        if (file_exists(DIR_PRODUCT_IMAGE)) {
+            foreach (glob(DIR_PRODUCT_IMAGE . '*') as $file) {
+                unlink($file);
+            }
         }
     }
-    
+        
+    private function saveFile($content) {
+        if(!(file_exists(DIR_EXPORT_XML) && is_dir(DIR_EXPORT_XML))) {
+            mkdir(DIR_EXPORT_XML);
+        }
+        return file_put_contents(DIR_EXPORT_XML . 'exported.xml', $content);
+    }
+
 }
-    
-}
-
-
-
-

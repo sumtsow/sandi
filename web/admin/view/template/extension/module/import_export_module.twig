@@ -67,13 +67,17 @@
                             <input type="submit" id="button-export" form="form-save" name="save" class="btn btn-primary" value="{{ entry_save }}" />
                         </div>
                     </form>
-                        <textarea class="form-control" rows="15">{{ xml }}</textarea>
+                    <a id="download" class="d-none" href="/catalog/export_xml/exported.xml" download="exported_{{ date }}.xml"></a>
                 </div>
             </div>
         </div>
     </div>
 </div>
-                
+
+<script>
+{{ download }}
+</script>
+                            
 <div class="modal" id="Modal" tabindex="-1" role="dialog">
     <div class="modal-dialog" role="document">
         <div class="modal-content">

@@ -30,13 +30,17 @@ public function index() {
             else {
                 $this->error['url'] = '';
             }
+            $data['download'] = '';
         }
         
         elseif (isset($this->request->post['save'])) {
-            $data['xml'] = $model->export();
-            $data['import'] = '';
-            $data['export'] = 'active';
-            
+            if($model->export()) {
+                $data['download'] = 'let downloadLink = document.getElementById("download");
+    onload = downloadLink.click();';
+                $data['import'] = '';
+                $data['export'] = 'active';
+                $data['date'] = date('Y-m-d');
+            }
         }
 
         $data['success'] = $this->language->get('text_success');
@@ -70,21 +74,10 @@ public function index() {
     $data['cancel'] = $this->url->link('marketplace/extension', 'user_token=' . $this->session->data['user_token'] . '&type=module', true);
 
     $data['user_token'] = $this->session->data['user_token'];
-
-    /*if (isset($this->request->post['name'])) {
-        $data['name'] = $this->request->post['name'];
-    }
-    elseif (!empty($module_info)) {
-        $data['name'] = $module_info['name'];
-    }
-    else {
-        $data['name'] = '';
-    }*/
-
-        $data['header'] = $this->load->controller('common/header');
-        $data['column_left'] = $this->load->controller('common/column_left');
-        $data['footer'] = $this->load->controller('common/footer');
-        $this->response->setOutput($this->load->view('extension/module/import_export_module', $data));
+    $data['header'] = $this->load->controller('common/header');
+    $data['column_left'] = $this->load->controller('common/column_left');
+    $data['footer'] = $this->load->controller('common/footer');
+    $this->response->setOutput($this->load->view('extension/module/import_export_module', $data));
     }
  
     protected function validate() {
