@@ -1,6 +1,7 @@
 <?php
 
-define('DIR_PRODUCT_IMAGE', DIR_IMAGE . 'catalog/products/');
+define('DIR_PRODUCT_IMAGE_RELATIVE', 'catalog/products/');
+define('DIR_PRODUCT_IMAGE_ABSOLUTE', DIR_IMAGE . DIR_PRODUCT_IMAGE_RELATIVE);
 define('DIR_EXPORT_XML', DIR_CATALOG . 'export_xml/');
 
 static $registry = null;
@@ -160,7 +161,6 @@ class ModelExtensionModuleImportExportModule extends Model {
         $date_modified = $this->rootNode->getAttribute('date');
   
         foreach($this->categories as $category) {
-            
             $id = intval($category->getAttribute('id'));
             $parentId = ($category->getAttribute('parentId')) ? intval($category->getAttribute('parentId')) : 0;
             $description = $category->getAttribute('description');
@@ -426,11 +426,11 @@ class ModelExtensionModuleImportExportModule extends Model {
             $pData['tax_class_id'] = 10;
             $pData['sort_order'] = 0;
             $images = $product->getElementsByTagName('picture');
-            $imageFile = DIR_PRODUCT_IMAGE . basename($images->item(0)->nodeValue);
+            $imageFile = DIR_PRODUCT_IMAGE_RELATIVE . basename($images->item(0)->nodeValue);
             $pData['image'] = ($imageFile !== 'no_img.jpg') ? $imageFile : null;
             unset($pData['product_image']);
             foreach($images as $image) {
-                $imageFile = DIR_PRODUCT_IMAGE . basename($image->nodeValue);
+                $imageFile = DIR_PRODUCT_IMAGE_RELATIVE . basename($image->nodeValue);
                 $pData['product_image'][] = [
                     'image' => ($imageFile !== 'no_img.jpg') ? $imageFile : null,
                     'sort_order' => 0
@@ -600,8 +600,9 @@ class ModelExtensionModuleImportExportModule extends Model {
     }
     
     private function loadImages() {
-        if(!(file_exists(DIR_PRODUCT_IMAGE) && is_dir(DIR_PRODUCT_IMAGE))) {
-            mkdir(DIR_PRODUCT_IMAGE);
+
+        if(!(file_exists(DIR_PRODUCT_IMAGE_ABSOLUTE) && is_dir(DIR_PRODUCT_IMAGE_ABSOLUTE))) {
+            mkdir(DIR_PRODUCT_IMAGE_ABSOLUTE);
         }
         else {
             $this->clearDir();
@@ -611,14 +612,14 @@ class ModelExtensionModuleImportExportModule extends Model {
             $url = $image->nodeValue;
             $filename = basename($url);
             $content = file_get_contents($url);
-            file_put_contents(DIR_PRODUCT_IMAGE . $filename, $content);
+            file_put_contents(DIR_PRODUCT_IMAGE_ABSOLUTE . $filename, $content);
         }
         return true;
     }
     
     private function clearDir() {
-        if (file_exists(DIR_PRODUCT_IMAGE)) {
-            foreach (glob(DIR_PRODUCT_IMAGE . '*') as $file) {
+        if (file_exists(DIR_PRODUCT_IMAGE_ABSOLUTE)) {
+            foreach (glob(DIR_PRODUCT_IMAGE_ABSOLUTE . '*') as $file) {
                 unlink($file);
             }
         }
